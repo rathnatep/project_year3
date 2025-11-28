@@ -21,6 +21,7 @@ import {
   ClipboardList,
   LogOut,
   GraduationCap,
+  BarChart3,
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -51,7 +52,7 @@ export function AppSidebar() {
     menuItems.push({
       title: "Analytics",
       url: "/analytics",
-      icon: LayoutDashboard,
+      icon: BarChart3,
     });
   }
 
