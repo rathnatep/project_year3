@@ -50,7 +50,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
-    group_id TEXT NOT NULL,
+    group_id TEXT,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     due_date TEXT NOT NULL,
@@ -60,7 +60,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS submissions (
     id TEXT PRIMARY KEY,
-    task_id TEXT NOT NULL,
+    task_id TEXT,
     student_id TEXT NOT NULL,
     text_content TEXT,
     file_url TEXT,
@@ -73,7 +73,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS announcements (
     id TEXT PRIMARY KEY,
-    group_id TEXT NOT NULL,
+    group_id TEXT,
     teacher_id TEXT NOT NULL,
     message TEXT NOT NULL,
     created_at TEXT NOT NULL,
