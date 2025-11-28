@@ -290,7 +290,15 @@ export default function GroupDetail() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button
+            variant={showAnnouncements ? "default" : "outline"}
+            onClick={() => setShowAnnouncements(!showAnnouncements)}
+            data-testid="button-messages"
+          >
+            <Bell className="h-4 w-4 mr-2" />
+            Messages
+          </Button>
           {isOwner ? (
             <>
               <Link href={`/groups/${id}/tasks/new`} asChild>
@@ -320,6 +328,12 @@ export default function GroupDetail() {
           )}
         </div>
       </div>
+
+      {showAnnouncements && (
+        <div>
+          <Announcements groupId={id!} isTeacher={isTeacher} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
