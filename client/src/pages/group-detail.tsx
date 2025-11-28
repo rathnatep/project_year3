@@ -306,7 +306,7 @@ export default function GroupDetail() {
               <Bell className="h-4 w-4 mr-2" />
               Messages
             </Button>
-            {unreadCounts && unreadCounts.announcements > 0 && (
+            {unreadCounts && unreadCounts.announcements > 0 && !isOwner && (
               <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-xs font-bold">
                 {unreadCounts.announcements}
               </Badge>

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -25,10 +26,16 @@ import {
 } from "lucide-react";
 
 export function AppSidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const [location] = useLocation();
 
   const isTeacher = user?.role === "teacher";
+
+  const { data: unreadCounts } = useQuery<{ announcements: number; submissions: number; tasks: number }>({
+    queryKey: ["/api/unread-counts"],
+    enabled: !!token,
+    refetchInterval: 5000,
+  });
 
   const menuItems = [
     {
@@ -95,6 +102,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => {
                 const isActive = location === item.url || location.startsWith(item.url + "/");
+                const badgeCount = 
+                  (item.title === "All Tasks" && unreadCounts?.tasks) ||
+                  (item.title === "Review Submissions" && unreadCounts?.submissions) ||
+                  0;
+                
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -102,10 +114,17 @@ export function AppSidebar() {
                       data-active={isActive}
                       className={isActive ? "bg-sidebar-accent" : ""}
                     >
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(" ", "-")}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
+                      <div className="flex items-center gap-2 w-full">
+                        <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(" ", "-")}`} className="flex items-center gap-2 flex-1">
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                        {badgeCount > 0 && (
+                          <Badge className="ml-auto h-5 min-w-5 flex items-center justify-center px-1 text-xs bg-red-500 hover:bg-red-600">
+                            {badgeCount}
+                          </Badge>
+                        )}
+                      </div>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
