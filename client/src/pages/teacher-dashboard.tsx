@@ -1,105 +1,47 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import type { GroupWithMembers } from "@shared/schema";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import type { TaskWithSubmissionStatus } from "@shared/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Users,
-  Plus,
-  Copy,
-  ClipboardList,
-  FolderOpen,
-  Loader2,
   FileText,
+  ClipboardList,
+  Calendar,
 } from "lucide-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { format, isPast, isToday, isTomorrow, differenceInDays } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 export default function TeacherDashboard() {
   const { user, token } = useAuth();
-  const { toast } = useToast();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [groupName, setGroupName] = useState("");
-
-  const { data: groups, isLoading: groupsLoading } = useQuery<GroupWithMembers[]>({
-    queryKey: ["/api/groups"],
-    enabled: !!token,
-  });
 
   const { data: stats } = useQuery<{ pendingSubmissions: number; totalTasks: number }>({
     queryKey: ["/api/stats"],
     enabled: !!token,
   });
 
-  const createGroupMutation = useMutation({
-    mutationFn: async (name: string) => {
-      return await apiRequest("POST", "/api/groups", { name });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-      setCreateDialogOpen(false);
-      setGroupName("");
-      toast({
-        title: "Group created",
-        description: "Your new group is ready. Share the join code with your students.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to create group",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+  const { data: upcomingTasks, isLoading: tasksLoading } = useQuery<TaskWithSubmissionStatus[]>({
+    queryKey: ["/api/tasks/upcoming"],
+    enabled: !!token,
   });
 
-  const deleteGroupMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/groups/${id}`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
-      toast({
-        title: "Group deleted",
-        description: "The group has been removed.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to delete group",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const copyJoinCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    toast({
-      title: "Join code copied",
-      description: "Share this code with your students",
-    });
-  };
-
-  const handleCreateGroup = () => {
-    if (groupName.trim()) {
-      createGroupMutation.mutate(groupName.trim());
+  const getDueDateBadge = (dueDate: string) => {
+    const date = new Date(dueDate);
+    if (isPast(date) && !isToday(date)) {
+      return <Badge variant="destructive" className="text-xs">Overdue</Badge>;
     }
+    if (isToday(date)) {
+      return <Badge variant="destructive" className="text-xs">Due Today</Badge>;
+    }
+    if (isTomorrow(date)) {
+      return <Badge className="text-xs bg-amber-500">Due Tomorrow</Badge>;
+    }
+    const daysLeft = differenceInDays(date, new Date());
+    if (daysLeft <= 3) {
+      return <Badge className="text-xs bg-amber-500">Due in {daysLeft} days</Badge>;
+    }
+    return <Badge variant="secondary" className="text-xs">Due {format(date, "MMM d, h:mm a")}</Badge>;
   };
 
   return (
@@ -132,6 +74,59 @@ export default function TeacherDashboard() {
         </Card>
       </div>
 
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Upcoming Tasks</h2>
+        {tasksLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2 mt-2" />
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        ) : upcomingTasks && upcomingTasks.length > 0 ? (
+          <div className="space-y-4">
+            {upcomingTasks.slice(0, 8).map((task) => (
+              <Card key={task.id} className="hover-elevate" data-testid={`card-task-${task.id}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CardTitle className="text-base">{task.title}</CardTitle>
+                        {getDueDateBadge(task.dueDate)}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {task.description || "No description"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                    <Link href={`/tasks/${task.id}/submissions`} className="flex-1">
+                      <Button size="sm" variant="outline" className="w-full" data-testid={`button-view-task-${task.id}`}>
+                        View Submissions
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <Calendar className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No upcoming tasks</h3>
+              <p className="text-muted-foreground">
+                All tasks are either completed or overdue. Create new tasks in your groups.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
