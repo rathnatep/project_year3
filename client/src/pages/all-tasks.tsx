@@ -42,7 +42,7 @@ export default function AllTasks() {
     if (daysLeft <= 3) {
       return <Badge className="text-xs bg-amber-500">Due in {daysLeft} days</Badge>;
     }
-    return <Badge variant="secondary" className="text-xs">Due {format(date, "MMM d")}</Badge>;
+    return <Badge variant="secondary" className="text-xs">Due {format(date, "MMM d, h:mm a")}</Badge>;
   };
 
   const getStatusIcon = (status?: string) => {
@@ -151,7 +151,7 @@ export default function AllTasks() {
                   <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    Due {format(new Date(task.dueDate), "MMM d, yyyy")}
+                    Due {format(new Date(task.dueDate), "MMM d, yyyy h:mm a")}
                   </div>
                   <Link href={`/tasks/${task.id}/submit`}>
                     <Button className="w-full" data-testid={`button-submit-${task.id}`}>
@@ -197,7 +197,7 @@ export default function AllTasks() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    Due {format(new Date(task.dueDate), "MMM d, yyyy")}
+                    Due {format(new Date(task.dueDate), "MMM d, yyyy h:mm a")}
                   </div>
                 </CardContent>
               </Card>

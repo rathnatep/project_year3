@@ -94,7 +94,7 @@ export default function StudentDashboard() {
     if (daysLeft <= 3) {
       return <Badge className="text-xs bg-amber-500">Due in {daysLeft} days</Badge>;
     }
-    return <Badge variant="secondary" className="text-xs">Due {format(date, "MMM d")}</Badge>;
+    return <Badge variant="secondary" className="text-xs">Due {format(date, "MMM d, h:mm a")}</Badge>;
   };
 
   const getStatusIcon = (status?: string) => {

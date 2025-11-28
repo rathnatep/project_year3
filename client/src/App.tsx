@@ -103,6 +103,13 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/groups">
+        <ProtectedRoute>
+          <AppLayout>
+            <Dashboard />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/groups/:id">
         <ProtectedRoute>
           <AppLayout>
