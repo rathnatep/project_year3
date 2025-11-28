@@ -248,8 +248,16 @@ export class SQLiteStorage implements IStorage {
   }
 
   async removeMemberFromGroup(groupId: string, userId: string): Promise<void> {
-    const stmt = db.prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ?");
-    stmt.run(groupId, userId);
+    // Delete all submissions by this student for tasks in this group
+    db.prepare(`
+      DELETE FROM submissions 
+      WHERE student_id = ? AND task_id IN (
+        SELECT id FROM tasks WHERE group_id = ?
+      )
+    `).run(userId, groupId);
+    
+    // Remove student from group
+    db.prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ?").run(groupId, userId);
   }
 
   async getGroupMembers(groupId: string): Promise<{ id: string; userId: string; name: string; email: string }[]> {
