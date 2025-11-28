@@ -270,23 +270,70 @@ export default function TaskForm() {
               <FormField
                 control={form.control}
                 name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="date"
-                          className="pl-10"
-                          data-testid="input-task-due-date"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const [date, time, meridiem] = field.value 
+                    ? field.value.includes(" ") 
+                      ? field.value.split(" ")
+                      : [field.value, "", ""]
+                    : ["", "", "AM"];
+
+                  const handleDateChange = (newDate: string) => {
+                    const newValue = time && meridiem ? `${newDate} ${time} ${meridiem}` : newDate;
+                    field.onChange(newValue);
+                  };
+
+                  const handleTimeChange = (newTime: string) => {
+                    const newValue = date ? `${date} ${newTime} ${meridiem}` : date;
+                    field.onChange(newValue);
+                  };
+
+                  const handleMeridiemChange = (newMeridiem: string) => {
+                    const newValue = date && time ? `${date} ${time} ${newMeridiem}` : date;
+                    field.onChange(newValue);
+                  };
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Due Date & Time</FormLabel>
+                      <FormControl>
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="date"
+                              className="pl-10"
+                              data-testid="input-task-due-date"
+                              value={date}
+                              onChange={(e) => handleDateChange(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="time"
+                              className="flex-1"
+                              data-testid="input-task-due-time"
+                              value={time}
+                              onChange={(e) => handleTimeChange(e.target.value)}
+                            />
+                            <select
+                              className="px-3 py-2 border rounded-md text-sm"
+                              data-testid="select-meridiem"
+                              value={meridiem}
+                              onChange={(e) => handleMeridiemChange(e.target.value)}
+                            >
+                              <option value="AM">AM</option>
+                              <option value="PM">PM</option>
+                            </select>
+                          </div>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Set the due date and time for this task
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <div className="space-y-2">

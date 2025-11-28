@@ -144,18 +144,23 @@ export default function SubmissionReview() {
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href={`/groups/${task.groupId}`}>
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold">{task.title}</h1>
-          <p className="text-muted-foreground">
-            {task.groupName} · {submissions?.length || 0} submissions
-          </p>
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4 flex-1">
+          <Link href={`/groups/${task.groupId}`}>
+            <Button variant="ghost" size="icon" data-testid="button-back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold">{task.title}</h1>
+            <p className="text-muted-foreground">
+              {task.groupName} · {submissions?.length || 0} submissions
+            </p>
+          </div>
         </div>
+        {task.fileUrl && (
+          <FilePreview fileUrl={task.fileUrl} fileName={task.fileUrl.split("/").pop()} />
+        )}
       </div>
 
       <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
@@ -203,7 +208,7 @@ export default function SubmissionReview() {
 
         <TabsContent value="pending">
           {pendingSubmissions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               {pendingSubmissions.map((submission) => (
                 <SubmissionCard
                   key={submission.id}
@@ -227,7 +232,7 @@ export default function SubmissionReview() {
 
         <TabsContent value="graded">
           {gradedSubmissions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               {gradedSubmissions.map((submission) => (
                 <SubmissionCard
                   key={submission.id}
@@ -252,7 +257,7 @@ export default function SubmissionReview() {
 
         <TabsContent value="all">
           {submissions && submissions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               {submissions.map((submission) => (
                 <SubmissionCard
                   key={submission.id}
@@ -298,90 +303,102 @@ function SubmissionCard({
 }) {
   return (
     <Card data-testid={`card-submission-${submission.id}`} className={isGraded ? "border-green-500/30" : ""}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3">
+      <CardHeader className="pb-4 border-b">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 flex-1">
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-primary/10 text-primary">
                 {getInitials(submission.studentName)}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <CardTitle className="text-base">{submission.studentName}</CardTitle>
-              <CardDescription>{submission.studentEmail}</CardDescription>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">{submission.studentName}</CardTitle>
+                {isGraded && (
+                  <Badge variant="secondary" className="gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    {submission.score}/100
+                  </Badge>
+                )}
+              </div>
+              <CardDescription className="text-xs">
+                {submission.studentEmail} · Submitted {format(new Date(submission.submittedAt), "MMM d, h:mm a")}
+              </CardDescription>
             </div>
           </div>
-          {isGraded && (
-            <Badge variant="secondary" className="gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              {submission.score}/100
-            </Badge>
-          )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-xs text-muted-foreground">
-          Submitted {format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")}
-        </div>
-
+      <CardContent className="pt-4 space-y-4">
         {submission.textContent && (
-          <div className="bg-muted p-3 rounded-lg">
-            <p className="text-sm whitespace-pre-wrap line-clamp-4">
-              {submission.textContent}
-            </p>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Student Response</p>
+            <div className="bg-muted p-3 rounded-md">
+              <p className="text-sm whitespace-pre-wrap line-clamp-3">
+                {submission.textContent}
+              </p>
+            </div>
           </div>
         )}
 
         {submission.fileUrl && (
-          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-            <FileText className="h-4 w-4 text-primary" />
-            <span className="text-sm flex-1 truncate">
-              {submission.fileUrl.split("/").pop()}
-            </span>
-            <div className="flex items-center gap-2">
-              <FilePreview fileUrl={submission.fileUrl} />
-              <a
-                href={submission.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-              >
-                <Button size="sm" variant="outline" data-testid="button-download-file">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </a>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Submitted File</p>
+            <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-sm truncate">
+                  {submission.fileUrl.split("/").pop()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                <FilePreview fileUrl={submission.fileUrl} />
+                <a
+                  href={submission.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                >
+                  <Button size="sm" variant="outline" data-testid="button-download-file">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </a>
+              </div>
             </div>
           </div>
         )}
 
-        <div className="flex items-center gap-3 pt-2">
-          <div className="flex items-center gap-2 flex-1">
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              placeholder="Score"
-              value={score}
-              onChange={(e) => onScoreChange(e.target.value)}
-              className="w-24"
-              data-testid={`input-score-${submission.id}`}
-            />
-            <span className="text-sm text-muted-foreground">/ 100</span>
-          </div>
-          <Button
-            size="sm"
-            onClick={onSave}
-            disabled={isSaving}
-            data-testid={`button-save-score-${submission.id}`}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
+        <div className="pt-2 border-t">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Grade</p>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="Score"
+                  value={score}
+                  onChange={(e) => onScoreChange(e.target.value)}
+                  className="w-20"
+                  data-testid={`input-score-${submission.id}`}
+                />
+                <span className="text-sm text-muted-foreground">/100</span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={onSave}
+              disabled={isSaving}
+              data-testid={`button-save-score-${submission.id}`}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
                 {isGraded ? "Update" : "Save"}
               </>
             )}
