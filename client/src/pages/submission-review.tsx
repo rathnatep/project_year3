@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
   FileText,
@@ -156,6 +157,34 @@ export default function SubmissionReview() {
           </p>
         </div>
       </div>
+
+      <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
+        <CardHeader>
+          <CardTitle className="text-base">Task Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+          {task.fileUrl && (
+            <div className="flex items-center gap-3 p-3 bg-white dark:bg-black/20 rounded-lg border">
+              <FileText className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-medium text-sm">{task.fileUrl.split("/").pop()}</p>
+                <p className="text-xs text-muted-foreground">Task attachment</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <FilePreview fileUrl={task.fileUrl} />
+                <a href={task.fileUrl} target="_blank" rel="noopener noreferrer" download>
+                  <Button size="sm" variant="outline" data-testid="button-download-task-file">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </a>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Separator className="my-6" />
 
       <Tabs defaultValue="pending" className="space-y-6">
         <TabsList>
