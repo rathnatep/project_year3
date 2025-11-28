@@ -564,9 +564,12 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/analytics", authenticateToken, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
+  app.get("/api/analytics", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const analytics = await storage.getAnalyticsForTeacher(req.user!.id);
+      const isTeacher = req.user!.role === "teacher";
+      const analytics = isTeacher 
+        ? await storage.getAnalyticsForTeacher(req.user!.id)
+        : await storage.getAnalyticsForStudent(req.user!.id);
       res.json(analytics);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

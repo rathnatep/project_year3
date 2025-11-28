@@ -464,6 +464,84 @@ export class SQLiteStorage implements IStorage {
     return stmt.all(studentId, studentId) as any[];
   }
 
+  async getAnalyticsForStudent(studentId: string): Promise<{
+    totalGroups: number;
+    totalTasks: number;
+    totalSubmissions: number;
+    averageScore: number;
+    submissionRate: number;
+    groupStats: { groupName: string; submissionRate: number; averageScore: number; taskCount: number }[];
+  }> {
+    const groupsStmt = db.prepare(`
+      SELECT COUNT(DISTINCT gm.group_id) as count FROM group_members gm
+      WHERE gm.user_id = ?
+    `);
+    const groups = groupsStmt.get(studentId) as { count: number };
+
+    const tasksStmt = db.prepare(`
+      SELECT COUNT(DISTINCT t.id) as count FROM tasks t
+      JOIN groups g ON t.group_id = g.id
+      JOIN group_members gm ON g.id = gm.group_id
+      WHERE gm.user_id = ?
+    `);
+    const tasks = tasksStmt.get(studentId) as { count: number };
+
+    const submissionsStmt = db.prepare(`
+      SELECT COUNT(*) as count FROM submissions s
+      JOIN tasks t ON s.task_id = t.id
+      JOIN groups g ON t.group_id = g.id
+      JOIN group_members gm ON g.id = gm.group_id
+      WHERE gm.user_id = ? AND s.student_id = ?
+    `);
+    const submissions = submissionsStmt.get(studentId, studentId) as { count: number };
+
+    const avgScoreStmt = db.prepare(`
+      SELECT AVG(score) as avgScore FROM submissions s
+      JOIN tasks t ON s.task_id = t.id
+      JOIN groups g ON t.group_id = g.id
+      JOIN group_members gm ON g.id = gm.group_id
+      WHERE gm.user_id = ? AND s.student_id = ? AND s.score IS NOT NULL
+    `);
+    const avgScore = avgScoreStmt.get(studentId, studentId) as { avgScore: number | null };
+
+    const expectedSubmissionsStmt = db.prepare(`
+      SELECT COUNT(DISTINCT t.id) as count FROM tasks t
+      JOIN groups g ON t.group_id = g.id
+      JOIN group_members gm ON g.id = gm.group_id
+      WHERE gm.user_id = ?
+    `);
+    const expectedSubmissions = expectedSubmissionsStmt.get(studentId) as { count: number };
+
+    const groupStatsStmt = db.prepare(`
+      SELECT 
+        g.name as groupName,
+        COUNT(DISTINCT t.id) as taskCount,
+        SUM(CASE WHEN s.student_id = ? THEN 1 ELSE 0 END) as submittedCount,
+        COALESCE(AVG(CASE WHEN s.student_id = ? THEN s.score ELSE NULL END), 0) as avgScore
+      FROM groups g
+      LEFT JOIN group_members gm ON g.id = gm.group_id
+      LEFT JOIN tasks t ON g.id = t.group_id
+      LEFT JOIN submissions s ON t.id = s.task_id
+      WHERE gm.user_id = ?
+      GROUP BY g.id, g.name
+    `);
+    const groupStats = groupStatsStmt.all(studentId, studentId, studentId) as any[];
+
+    return {
+      totalGroups: groups.count,
+      totalTasks: tasks.count,
+      totalSubmissions: submissions.count,
+      averageScore: Math.round((avgScore.avgScore || 0) * 100) / 100,
+      submissionRate: expectedSubmissions.count > 0 ? Math.round((submissions.count / expectedSubmissions.count) * 100) : 0,
+      groupStats: groupStats.map((g) => ({
+        groupName: g.groupName,
+        submissionRate: g.taskCount > 0 ? Math.round((g.submittedCount / g.taskCount) * 100) : 0,
+        averageScore: Math.round(g.avgScore * 100) / 100,
+        taskCount: g.taskCount,
+      })),
+    };
+  }
+
   async getAnalyticsForTeacher(teacherId: string): Promise<{
     totalGroups: number;
     totalTasks: number;

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import {
   BarChart,
   Bar,
@@ -31,7 +32,9 @@ interface Analytics {
 }
 
 export default function AnalyticsDashboard() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const { toast } = useToast();
+  const isTeacher = user?.role === "teacher";
 
   const { data: analytics, isLoading } = useQuery<Analytics>({
     queryKey: ["/api/analytics"],
@@ -52,8 +55,17 @@ export default function AnalyticsDashboard() {
       a.download = "grades-report.csv";
       a.click();
       window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Export successful",
+        description: "Your analytics report has been downloaded.",
+      });
     } catch (error) {
-      console.error("CSV export error:", error);
+      toast({
+        title: "Export failed",
+        description: "Unable to download the analytics report.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -95,12 +107,16 @@ export default function AnalyticsDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">View your classroom performance metrics</p>
+          <p className="text-muted-foreground">
+            {isTeacher ? "View your classroom performance metrics" : "View your learning progress across groups"}
+          </p>
         </div>
-        <Button onClick={downloadCSV} data-testid="button-export-csv">
-          <Download className="h-4 w-4 mr-2" />
-          Export as CSV
-        </Button>
+        {isTeacher && (
+          <Button onClick={downloadCSV} data-testid="button-export-csv">
+            <Download className="h-4 w-4 mr-2" />
+            Export as CSV
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
