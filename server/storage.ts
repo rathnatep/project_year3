@@ -15,6 +15,9 @@ import type {
   GroupWithMembers,
   TaskWithSubmissionStatus,
   SubmissionWithStudent,
+  Announcement,
+  AnnouncementWithTeacher,
+  InsertAnnouncement,
 } from "@shared/schema";
 
 const db = new Database("classroom.db");
@@ -67,6 +70,16 @@ db.exec(`
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE(task_id, student_id)
   );
+
+  CREATE TABLE IF NOT EXISTS announcements (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    teacher_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+  );
 `);
 
 function generateJoinCode(): string {
@@ -109,6 +122,9 @@ export interface IStorage {
 
   getTeacherStats(teacherId: string): Promise<{ pendingSubmissions: number; totalTasks: number }>;
   getUpcomingTasksForStudent(studentId: string): Promise<TaskWithSubmissionStatus[]>;
+
+  createAnnouncement(announcement: InsertAnnouncement, teacherId: string): Promise<Announcement>;
+  getAnnouncementsForGroup(groupId: string): Promise<AnnouncementWithTeacher[]>;
 }
 
 export class SQLiteStorage implements IStorage {
