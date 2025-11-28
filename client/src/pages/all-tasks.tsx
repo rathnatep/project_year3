@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
@@ -6,6 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   CheckCircle2,
   Clock,
@@ -21,6 +29,7 @@ interface TaskWithGroup extends TaskWithSubmissionStatus {
 
 export default function AllTasks() {
   const { token } = useAuth();
+  const [groupFilter, setGroupFilter] = useState<string>("all");
 
   const { data: tasks, isLoading } = useQuery<TaskWithGroup[]>({
     queryKey: ["/api/tasks/all"],
@@ -67,10 +76,16 @@ export default function AllTasks() {
     }
   };
 
+  // Get unique groups
+  const groups = [...new Set(tasks?.map((t) => t.groupName) || [])];
+
+  // Filter by group
+  const allTasks = tasks?.filter((t) => groupFilter === "all" || t.groupName === groupFilter) || [];
+
   // Sort tasks by due date
-  const sortedTasks = tasks?.sort((a, b) => 
+  const sortedTasks = allTasks.sort((a, b) => 
     new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-  ) || [];
+  );
 
   const submittedTasks = sortedTasks.filter((t) => t.submissionStatus && t.submissionStatus !== "not_submitted");
   const pendingTasks = sortedTasks.filter((t) => !t.submissionStatus || t.submissionStatus === "not_submitted");
@@ -94,9 +109,26 @@ export default function AllTasks() {
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">All Tasks</h1>
-        <p className="text-muted-foreground">View all tasks from your enrolled groups</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">All Tasks</h1>
+          <p className="text-muted-foreground">View all tasks from your enrolled groups</p>
+        </div>
+        {groups.length > 1 && (
+          <Select value={groupFilter} onValueChange={(value) => setGroupFilter(value)}>
+            <SelectTrigger className="w-[200px]" data-testid="select-group-filter">
+              <SelectValue placeholder="Filter by group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Groups</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group} value={group}>
+                  {group}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
