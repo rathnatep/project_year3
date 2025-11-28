@@ -49,11 +49,6 @@ export function AppSidebar() {
       url: "/submissions",
       icon: ClipboardList,
     });
-    menuItems.push({
-      title: "Analytics",
-      url: "/analytics",
-      icon: BarChart3,
-    });
   } else {
     menuItems.push({
       title: "All Tasks",
@@ -61,6 +56,12 @@ export function AppSidebar() {
       icon: ClipboardList,
     });
   }
+
+  menuItems.push({
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
+  });
 
   const getInitials = (name: string) => {
     return name
