@@ -219,7 +219,7 @@ export default function GroupDetail() {
             <p className="text-muted-foreground mb-4">
               This group doesn't exist or you don't have access to it.
             </p>
-            <Link href="/dashboard">
+            <Link href="/dashboard" asChild>
               <Button>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
@@ -235,7 +235,7 @@ export default function GroupDetail() {
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard">
+          <Link href="/dashboard" asChild>
             <Button variant="ghost" size="icon" data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -267,7 +267,7 @@ export default function GroupDetail() {
         <div className="flex items-center gap-2">
           {isOwner ? (
             <>
-              <Link href={`/groups/${id}/tasks/new`}>
+              <Link href={`/groups/${id}/tasks/new`} asChild>
                 <Button data-testid="button-create-task">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Task
@@ -289,7 +289,7 @@ export default function GroupDetail() {
               data-testid="button-leave-group"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Leave Group
+              Leave
             </Button>
           )}
         </div>
