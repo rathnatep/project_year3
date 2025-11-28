@@ -525,6 +525,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/submissions/pending", authenticateToken, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const allSubmissions = await storage.getAllSubmissionsForTeacher(req.user!.id);
+      const pendingSubmissions = allSubmissions.filter(sub => sub.score === null);
+      res.json(pendingSubmissions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.patch("/api/submissions/:id/score", authenticateToken, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const validatedData = updateScoreSchema.parse(req.body);
