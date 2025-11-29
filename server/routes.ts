@@ -15,7 +15,6 @@ import {
   updateTaskSchema,
   insertSubmissionSchema,
   updateScoreSchema,
-  insertAnnouncementSchema,
 } from "@shared/schema";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "classroom-management-secret-key";
@@ -613,83 +612,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/announcements", authenticateToken, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const validatedData = insertAnnouncementSchema.parse(req.body);
-      
-      const group = await storage.getGroupById(validatedData.groupId);
-      if (!group || group.ownerId !== req.user!.id) {
-        return res.status(403).json({ message: "You don't have permission to post in this group" });
-      }
-
-      const announcement = await storage.createAnnouncement(validatedData, req.user!.id);
-      res.status(201).json(announcement);
-    } catch (error: any) {
-      if (error.errors) {
-        return res.status(400).json({ message: error.errors[0]?.message || "Validation error" });
-      }
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.get("/api/announcements/:groupId", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const { groupId } = req.params;
-      
-      const group = await storage.getGroupById(groupId);
-      if (!group) {
-        return res.status(404).json({ message: "Group not found" });
-      }
-
-      const isMember = await storage.isMemberOfGroup(groupId, req.user!.id);
-      const isOwner = group.ownerId === req.user!.id;
-      
-      if (!isMember && !isOwner) {
-        return res.status(403).json({ message: "You don't have access to this group" });
-      }
-
-      const announcements = await storage.getAnnouncementsForGroup(groupId);
-      res.json(announcements);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.post("/api/announcements/:announcementId/read", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const { announcementId } = req.params;
-      await storage.markAnnouncementAsRead(announcementId, req.user!.id);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.get("/api/unread-counts", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const isTeacher = req.user!.role === "teacher";
-      let announcements = 0;
-      let submissions = 0;
-      let tasks = 0;
-
-      if (isTeacher) {
-        submissions = await storage.getUnreadSubmissionCount(req.user!.id);
-      } else {
-        tasks = await storage.getUnreadTaskCount(req.user!.id);
-      }
-
-      // Count unread announcements across all groups user is member of
-      const groups = await storage.getGroupsForUser(req.user!.id, req.user!.role);
-      for (const group of groups) {
-        const count = await storage.getUnreadAnnouncementCount(group.id, req.user!.id);
-        announcements += count;
-      }
-
-      res.json({ announcements, submissions, tasks });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
 
   return httpServer;
 }

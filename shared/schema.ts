@@ -43,14 +43,6 @@ export const submissions = {
   score: "integer",
 };
 
-export const announcements = {
-  id: "text",
-  groupId: "text",
-  teacherId: "text",
-  message: "text",
-  createdAt: "text",
-};
-
 export const insertUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
@@ -93,11 +85,6 @@ export const updateScoreSchema = z.object({
   score: z.number().min(0).max(100),
 });
 
-export const insertAnnouncementSchema = z.object({
-  groupId: z.string(),
-  message: z.string().min(1, "Announcement message is required").max(1000, "Message must be under 1000 characters"),
-});
-
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginCredentials = z.infer<typeof loginSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
@@ -106,7 +93,6 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
 export type UpdateScore = z.infer<typeof updateScoreSchema>;
-export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 
 export interface User {
   id: string;
@@ -163,18 +149,6 @@ export interface TaskWithSubmissionStatus extends Task {
 export interface SubmissionWithStudent extends Submission {
   studentName: string;
   studentEmail: string;
-}
-
-export interface Announcement {
-  id: string;
-  groupId: string;
-  teacherId: string;
-  message: string;
-  createdAt: string;
-}
-
-export interface AnnouncementWithTeacher extends Announcement {
-  teacherName: string;
 }
 
 export interface AuthResponse {
