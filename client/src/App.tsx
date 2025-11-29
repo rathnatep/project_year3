@@ -131,13 +131,6 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/tasks/:taskId/edit">
-        <ProtectedRoute>
-          <AppLayout>
-            <TaskForm />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
       <Route path="/tasks/:taskId/submit">
         <ProtectedRoute>
           <AppLayout>

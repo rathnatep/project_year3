@@ -1,17 +1,16 @@
 import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Link, useParams, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertTaskSchema, type InsertTask, type Task } from "@shared/schema";
+import { insertTaskSchema, type InsertTask } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Form,
   FormControl,
@@ -32,20 +31,12 @@ import {
 import { format } from "date-fns";
 
 export default function TaskForm() {
-  const { groupId, taskId } = useParams<{ groupId?: string; taskId?: string }>();
+  const { groupId } = useParams<{ groupId: string }>();
   const { token } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const isEdit = !!taskId;
-
-  const { data: task, isLoading: taskLoading } = useQuery<Task>({
-    queryKey: ["/api/tasks", taskId],
-    enabled: !!token && isEdit,
-  });
 
   const form = useForm<InsertTask>({
     resolver: zodResolver(insertTaskSchema.omit({ groupId: true })),
@@ -54,20 +45,6 @@ export default function TaskForm() {
       description: "",
       dueDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
     },
-    values: task
-      ? {
-          groupId: task.groupId,
-          title: task.title,
-          description: task.description,
-          dueDate: task.dueDate.split("T")[0],
-        }
-      : undefined,
-  });
-
-  useState(() => {
-    if (task?.fileUrl) {
-      setExistingFileUrl(task.fileUrl);
-    }
   });
 
   const createTaskMutation = useMutation({
@@ -112,64 +89,8 @@ export default function TaskForm() {
     },
   });
 
-  const updateTaskMutation = useMutation({
-    mutationFn: async (data: { task: Omit<InsertTask, "groupId">; file?: File }) => {
-      const formData = new FormData();
-      formData.append("title", data.task.title);
-      formData.append("description", data.task.description);
-      formData.append("dueDate", data.task.dueDate);
-      if (data.file) {
-        formData.append("file", data.file);
-      }
-      if (existingFileUrl === null) {
-        formData.append("removeFile", "true");
-      }
-
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update task");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups", task?.groupId, "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-      toast({
-        title: "Task updated",
-        description: "Your task has been updated successfully.",
-      });
-      setLocation(`/groups/${task?.groupId}`);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to update task",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleSubmit = (data: InsertTask) => {
-    const taskData = {
-      title: data.title,
-      description: data.description,
-      dueDate: data.dueDate,
-    };
-
-    if (isEdit) {
-      updateTaskMutation.mutate({ task: taskData, file: file || undefined });
-    } else {
-      createTaskMutation.mutate({ task: taskData, file: file || undefined });
-    }
+    createTaskMutation.mutate({ task: data, file: file || undefined });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,43 +103,25 @@ export default function TaskForm() {
 
   const removeFile = () => {
     setFile(null);
-    setExistingFileUrl(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const isPending = createTaskMutation.isPending || updateTaskMutation.isPending;
-
-  if (isEdit && taskLoading) {
-    return (
-      <div className="p-6 lg:p-8 max-w-2xl mx-auto">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <Card>
-          <CardContent className="p-6 space-y-6">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isPending = createTaskMutation.isPending;
 
   return (
     <div className="p-6 lg:p-8 max-w-2xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
-        <Link href={isEdit ? `/groups/${task?.groupId}` : `/groups/${groupId}`}>
+        <Link href={`/groups/${groupId}`}>
           <Button variant="ghost" size="icon" data-testid="button-back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold">
-            {isEdit ? "Edit Task" : "Create New Task"}
-          </h1>
+          <h1 className="text-2xl font-semibold">Create New Task</h1>
           <p className="text-muted-foreground">
-            {isEdit ? "Update task details" : "Create a new assignment for your students"}
+            Create a new assignment for your students
           </p>
         </div>
       </div>
@@ -351,18 +254,16 @@ export default function TaskForm() {
                     accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
                     data-testid="input-file"
                   />
-                  {file || existingFileUrl ? (
+                  {file ? (
                     <div className="flex items-center justify-center gap-3">
                       <FileText className="h-8 w-8 text-primary" />
                       <div className="text-left">
                         <p className="font-medium">
-                          {file?.name || existingFileUrl?.split("/").pop()}
+                          {file.name}
                         </p>
-                        {file && (
-                          <p className="text-sm text-muted-foreground">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        )}
+                        <p className="text-sm text-muted-foreground">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
                       </div>
                       <Button
                         type="button"
@@ -392,7 +293,7 @@ export default function TaskForm() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
-                <Link href={isEdit ? `/groups/${task?.groupId}` : `/groups/${groupId}`}>
+                <Link href={`/groups/${groupId}`}>
                   <Button type="button" variant="outline" data-testid="button-cancel">
                     Cancel
                   </Button>
@@ -401,10 +302,8 @@ export default function TaskForm() {
                   {isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {isEdit ? "Updating..." : "Creating..."}
+                      Creating...
                     </>
-                  ) : isEdit ? (
-                    "Update Task"
                   ) : (
                     "Create Task"
                   )}
