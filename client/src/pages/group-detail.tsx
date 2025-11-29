@@ -4,7 +4,6 @@ import { Link, useParams, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Announcements } from "@/components/announcements";
 import type { Group, TaskWithSubmissionStatus, User } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ import {
   Clock,
   XCircle,
   Eye,
-  Bell,
 } from "lucide-react";
 import { format, isPast, isToday, isTomorrow, differenceInDays } from "date-fns";
 
@@ -67,7 +65,6 @@ export default function GroupDetail() {
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [removeStudentId, setRemoveStudentId] = useState<string | null>(null);
-  const [showAnnouncements, setShowAnnouncements] = useState(false);
 
   const isTeacher = user?.role === "teacher";
 
@@ -84,12 +81,6 @@ export default function GroupDetail() {
   const { data: members, isLoading: membersLoading } = useQuery<GroupMemberDetails[]>({
     queryKey: ["/api/groups", id, "members"],
     enabled: !!token && !!id,
-  });
-
-  const { data: unreadCounts } = useQuery<{ announcements: number; submissions: number; tasks: number }>({
-    queryKey: ["/api/unread-counts"],
-    enabled: !!token,
-    refetchInterval: 5000,
   });
 
   const isOwner = group?.ownerId === user?.id;
@@ -296,21 +287,6 @@ export default function GroupDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <div className="relative">
-            <Button
-              variant={showAnnouncements ? "default" : "outline"}
-              onClick={() => setShowAnnouncements(!showAnnouncements)}
-              data-testid="button-messages"
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              Messages
-            </Button>
-            {unreadCounts && unreadCounts.announcements > 0 && !isOwner && (
-              <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-xs font-bold">
-                {unreadCounts.announcements}
-              </Badge>
-            )}
-          </div>
           {isOwner ? (
             <>
               <Link href={`/groups/${id}/tasks/new`} asChild>
@@ -340,12 +316,6 @@ export default function GroupDetail() {
           )}
         </div>
       </div>
-
-      {showAnnouncements && (
-        <div>
-          <Announcements groupId={id!} isTeacher={isTeacher} />
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">

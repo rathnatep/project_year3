@@ -223,8 +223,7 @@ export class SQLiteStorage implements IStorage {
       throw new Error("Cannot delete group with student submissions. Please contact administrator.");
     }
     
-    // Set NULL for foreign keys to preserve data (SET NULL instead of CASCADE DELETE)
-    db.prepare("UPDATE announcements SET group_id = NULL WHERE group_id = ?").run(id);
+    // Delete group members and tasks
     db.prepare("DELETE FROM group_members WHERE group_id = ?").run(id);
     db.prepare("DELETE FROM tasks WHERE group_id = ?").run(id);
     db.prepare("DELETE FROM groups WHERE id = ?").run(id);

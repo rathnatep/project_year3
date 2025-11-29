@@ -70,12 +70,6 @@ export const insertTaskSchema = z.object({
   dueDate: z.string(),
 });
 
-export const updateTaskSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters").optional(),
-  description: z.string().min(1, "Description is required").optional(),
-  dueDate: z.string().optional(),
-});
-
 export const insertSubmissionSchema = z.object({
   taskId: z.string(),
   textContent: z.string().optional(),
@@ -90,7 +84,6 @@ export type LoginCredentials = z.infer<typeof loginSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type JoinGroup = z.infer<typeof joinGroupSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
-export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
 export type UpdateScore = z.infer<typeof updateScoreSchema>;
 
