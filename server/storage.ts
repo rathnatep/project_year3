@@ -328,19 +328,17 @@ export class SQLiteStorage implements IStorage {
   async createTask(taskData: InsertTask, fileUrl?: string): Promise<Task> {
     const id = randomUUID();
     const stmt = db.prepare(`
-      INSERT INTO tasks (id, group_id, title, description, task_type, due_date, file_url, options, correct_answer)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (id, group_id, title, description, task_type, due_date, file_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       id,
       taskData.groupId,
       taskData.title,
       taskData.description,
-      taskData.taskType,
+      taskData.taskType || "text_file",
       taskData.dueDate,
-      fileUrl || null,
-      taskData.options || null,
-      taskData.correctAnswer || null
+      fileUrl || null
     );
     
     return {
@@ -348,11 +346,9 @@ export class SQLiteStorage implements IStorage {
       groupId: taskData.groupId,
       title: taskData.title,
       description: taskData.description,
-      taskType: taskData.taskType,
+      taskType: taskData.taskType || "text_file",
       dueDate: taskData.dueDate,
       fileUrl: fileUrl || null,
-      options: taskData.options || null,
-      correctAnswer: taskData.correctAnswer || null,
     };
   }
 
