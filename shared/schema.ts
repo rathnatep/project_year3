@@ -101,7 +101,7 @@ export const questionSchema = z.object({
   questionType: z.enum(questionTypes),
   options: z.string().optional(),
   correctAnswer: z.string().min(1, "Correct answer is required"),
-});
+}).passthrough();
 
 export const insertTextTaskSchema = z.object({
   groupId: z.string(),

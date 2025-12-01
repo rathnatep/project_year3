@@ -207,8 +207,8 @@ export default function TaskForm() {
       }
     }
 
-    // Prepare questions for submission
-    const questions = quizQuestions.map(({ tempId, ...q }) => q);
+    // Prepare questions for submission - only send required fields
+    const questions = quizQuestions.map(({ tempId, id, taskId, order, ...q }) => q);
     createTaskMutation.mutate({ ...data, taskType: "quiz", questions });
   };
 
