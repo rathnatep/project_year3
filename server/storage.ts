@@ -52,12 +52,21 @@ db.exec(`
     group_id TEXT,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    task_type TEXT NOT NULL DEFAULT 'text_file' CHECK(task_type IN ('text_file', 'multiple_choice', 'true_false')),
+    task_type TEXT NOT NULL DEFAULT 'text_file' CHECK(task_type IN ('text_file', 'quiz')),
     due_date TEXT NOT NULL,
     file_url TEXT,
-    options TEXT,
-    correct_answer TEXT,
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS questions (
+    id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    question_text TEXT NOT NULL,
+    question_type TEXT NOT NULL CHECK(question_type IN ('multiple_choice', 'true_false')),
+    options TEXT,
+    correct_answer TEXT NOT NULL,
+    question_order INTEGER,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS submissions (
@@ -66,12 +75,21 @@ db.exec(`
     student_id TEXT NOT NULL,
     text_content TEXT,
     file_url TEXT,
-    selected_answer TEXT,
     submitted_at TEXT NOT NULL,
     score INTEGER,
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL,
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE(task_id, student_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS question_responses (
+    id TEXT PRIMARY KEY,
+    submission_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    is_correct INTEGER,
+    FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS announcements (

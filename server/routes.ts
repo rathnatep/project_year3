@@ -11,7 +11,9 @@ import {
   loginSchema,
   insertGroupSchema,
   joinGroupSchema,
-  insertTaskSchema,
+  insertTextTaskSchema,
+  insertQuizTaskSchema,
+  questionSchema,
   insertSubmissionSchema,
   insertAnnouncementSchema,
   updateScoreSchema,
@@ -345,18 +347,47 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not authorized" });
       }
 
-      const taskData = {
-        groupId: req.params.groupId,
-        title: req.body.title,
-        description: req.body.description,
-        dueDate: req.body.dueDate,
-      };
+      const taskType = req.body.taskType || "text_file";
 
-      insertTaskSchema.parse(taskData);
+      if (taskType === "text_file") {
+        const taskData = {
+          groupId: req.params.groupId,
+          title: req.body.title,
+          description: req.body.description,
+          dueDate: req.body.dueDate,
+        };
 
-      const fileUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
-      const task = await storage.createTask(taskData, fileUrl);
-      res.status(201).json(task);
+        insertTextTaskSchema.parse(taskData);
+
+        const fileUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+        const task = await storage.createTask(taskData, fileUrl);
+        return res.status(201).json(task);
+      } else if (taskType === "quiz") {
+        const taskData = {
+          groupId: req.params.groupId,
+          title: req.body.title,
+          description: req.body.description,
+          dueDate: req.body.dueDate,
+          questions: req.body.questions ? JSON.parse(req.body.questions) : [],
+        };
+
+        insertQuizTaskSchema.parse(taskData);
+
+        const task = await storage.createTask({ groupId: taskData.groupId, title: taskData.title, description: taskData.description, dueDate: taskData.dueDate }, undefined);
+        
+        // Store questions
+        if (taskData.questions && taskData.questions.length > 0) {
+          for (let i = 0; i < taskData.questions.length; i++) {
+            const q = taskData.questions[i];
+            await storage.createQuestion(task.id, q.questionText, q.questionType, q.options || null, q.correctAnswer, i);
+          }
+        }
+
+        const fullTask = await storage.getTaskById(task.id);
+        return res.status(201).json(fullTask);
+      } else {
+        return res.status(400).json({ message: "Invalid task type" });
+      }
     } catch (error: any) {
       if (error.errors) {
         return res.status(400).json({ message: error.errors[0]?.message || "Validation error" });

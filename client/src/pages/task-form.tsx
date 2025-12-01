@@ -6,7 +6,7 @@ import { Link, useParams, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertTaskSchema, type InsertTask } from "@shared/schema";
+import { insertTextTaskSchema, insertQuizTaskSchema, questionSchema, type Question } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ import {
   FileText,
   Loader2,
   Calendar,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -42,33 +44,44 @@ export default function TaskForm() {
   const { token } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [taskMode, setTaskMode] = useState<"text" | "quiz">("text");
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [taskType, setTaskType] = useState<string>("text_file");
+  const [quizQuestions, setQuizQuestions] = useState<(Question & { tempId: string })[]>([]);
 
-  const form = useForm<InsertTask>({
-    resolver: zodResolver(insertTaskSchema.omit({ groupId: true })),
+  const textForm = useForm({
+    resolver: zodResolver(insertTextTaskSchema.omit({ groupId: true })),
     defaultValues: {
       title: "",
       description: "",
-      taskType: "text_file",
       dueDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
-      options: "",
-      correctAnswer: "",
+    },
+  });
+
+  const quizForm = useForm({
+    resolver: zodResolver(insertQuizTaskSchema.omit({ groupId: true })),
+    defaultValues: {
+      title: "",
+      description: "",
+      dueDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+      questions: [],
     },
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (data: { task: Omit<InsertTask, "groupId">; file?: File }) => {
+    mutationFn: async (data: any) => {
       const formData = new FormData();
-      formData.append("title", data.task.title);
-      formData.append("description", data.task.description);
-      formData.append("taskType", data.task.taskType);
-      formData.append("dueDate", data.task.dueDate);
-      if (data.task.options) formData.append("options", data.task.options);
-      if (data.task.correctAnswer) formData.append("correctAnswer", data.task.correctAnswer);
-      if (data.file) {
-        formData.append("file", data.file);
+      formData.append("title", data.title);
+      formData.append("description", data.description);
+      formData.append("dueDate", data.dueDate);
+      formData.append("taskType", data.taskType);
+
+      if (data.taskType === "text_file" && file) {
+        formData.append("file", file);
+      }
+
+      if (data.taskType === "quiz" && data.questions) {
+        formData.append("questions", JSON.stringify(data.questions));
       }
 
       const response = await fetch(`/api/groups/${groupId}/tasks`, {
@@ -103,8 +116,54 @@ export default function TaskForm() {
     },
   });
 
-  const handleSubmit = (data: InsertTask) => {
-    createTaskMutation.mutate({ task: data, file: file || undefined });
+  const handleAddQuestion = () => {
+    setQuizQuestions([
+      ...quizQuestions,
+      {
+        id: "",
+        taskId: "",
+        questionText: "",
+        questionType: "multiple_choice",
+        options: "",
+        correctAnswer: "",
+        order: quizQuestions.length,
+        tempId: Math.random().toString(),
+      },
+    ]);
+  };
+
+  const handleRemoveQuestion = (tempId: string) => {
+    setQuizQuestions(quizQuestions.filter((q) => q.tempId !== tempId));
+  };
+
+  const handleUpdateQuestion = (tempId: string, field: string, value: any) => {
+    setQuizQuestions(
+      quizQuestions.map((q) =>
+        q.tempId === tempId ? { ...q, [field]: value } : q
+      )
+    );
+  };
+
+  const handleSubmitText = (data: any) => {
+    createTaskMutation.mutate({ ...data, taskType: "text_file" });
+  };
+
+  const handleSubmitQuiz = (data: any) => {
+    if (quizQuestions.length === 0) {
+      toast({
+        title: "No questions",
+        description: "Please add at least one question",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const questions = quizQuestions.map(({ tempId, id, taskId, ...q }) => ({
+      ...q,
+      order: q.order,
+    }));
+
+    createTaskMutation.mutate({ ...data, taskType: "quiz", questions });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +183,7 @@ export default function TaskForm() {
   const isPending = createTaskMutation.isPending;
 
   return (
-    <div className="p-6 lg:p-8 max-w-2xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Link href={`/groups/${groupId}`}>
           <Button variant="ghost" size="icon" data-testid="button-back">
@@ -133,208 +192,105 @@ export default function TaskForm() {
         </Link>
         <div>
           <h1 className="text-2xl font-semibold">Create New Task</h1>
-          <p className="text-muted-foreground">
-            Create a new assignment for your students
-          </p>
+          <p className="text-muted-foreground">Choose a task type for your students</p>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="taskType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Task Type</FormLabel>
-                    <Select value={field.value} onValueChange={(value) => {
-                      field.onChange(value);
-                      setTaskType(value);
-                    }}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-task-type">
-                          <SelectValue placeholder="Select a task type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="text_file">Text Answer with File Upload</SelectItem>
-                        <SelectItem value="multiple_choice">Multiple Choice Question</SelectItem>
-                        <SelectItem value="true_false">True/False Question</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Choose the type of task for your students
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      {/* Task Type Selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card
+          className={`cursor-pointer transition-all hover-elevate ${
+            taskMode === "text" ? "ring-2 ring-primary" : ""
+          }`}
+          onClick={() => setTaskMode("text")}
+          data-testid="card-text-task"
+        >
+          <CardHeader>
+            <CardTitle className="text-lg">Text Answer Task</CardTitle>
+            <CardDescription>Students submit text and/or upload files</CardDescription>
+          </CardHeader>
+        </Card>
 
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Task Title</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g., Chapter 5 Homework"
-                        data-testid="input-task-title"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <Card
+          className={`cursor-pointer transition-all hover-elevate ${
+            taskMode === "quiz" ? "ring-2 ring-primary" : ""
+          }`}
+          onClick={() => setTaskMode("quiz")}
+          data-testid="card-quiz-task"
+        >
+          <CardHeader>
+            <CardTitle className="text-lg">Quiz Task</CardTitle>
+            <CardDescription>Create multiple choice or true/false questions</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Describe what students need to do..."
-                        className="min-h-[120px] resize-none"
-                        data-testid="input-task-description"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Provide clear instructions for your students
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {(taskType === "multiple_choice" || taskType === "true_false") && (
-                <>
-                  {taskType === "multiple_choice" && (
-                    <FormField
-                      control={form.control}
-                      name="options"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Options</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Enter options, one per line (e.g., Option A&#10;Option B&#10;Option C&#10;Option D)"
-                              className="min-h-[100px] resize-none"
-                              data-testid="input-task-options"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            List each option on a separate line
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <FormField
-                    control={form.control}
-                    name="correctAnswer"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {taskType === "multiple_choice" ? "Correct Option" : "Correct Answer"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={taskType === "multiple_choice" ? "e.g., Option A" : "True or False"}
-                            data-testid="input-correct-answer"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {taskType === "multiple_choice" 
-                            ? "Enter the correct option exactly as listed above"
-                            : "Enter either 'True' or 'False'"}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => {
-                  const [date, time, meridiem] = field.value 
-                    ? field.value.includes(" ") 
-                      ? field.value.split(" ")
-                      : [field.value, "", ""]
-                    : ["", "", "AM"];
-
-                  const handleDateChange = (newDate: string) => {
-                    const newValue = time && meridiem ? `${newDate} ${time} ${meridiem}` : newDate;
-                    field.onChange(newValue);
-                  };
-
-                  const handleTimeChange = (newTime: string) => {
-                    const newValue = date ? `${date} ${newTime} ${meridiem}` : date;
-                    field.onChange(newValue);
-                  };
-
-                  const handleMeridiemChange = (newMeridiem: string) => {
-                    const newValue = date && time ? `${date} ${time} ${newMeridiem}` : date;
-                    field.onChange(newValue);
-                  };
-
-                  return (
+      {/* Text File Task Form */}
+      {taskMode === "text" && (
+        <Card>
+          <CardContent className="p-6">
+            <Form {...textForm}>
+              <form onSubmit={textForm.handleSubmit(handleSubmitText)} className="space-y-6">
+                <FormField
+                  control={textForm.control}
+                  name="title"
+                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Due Date & Time</FormLabel>
+                      <FormLabel>Task Title</FormLabel>
                       <FormControl>
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              type="date"
-                              className="pl-10"
-                              data-testid="input-task-due-date"
-                              value={date}
-                              onChange={(e) => handleDateChange(e.target.value)}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="time"
-                              className="flex-1"
-                              data-testid="input-task-due-time"
-                              value={time}
-                              onChange={(e) => handleTimeChange(e.target.value)}
-                            />
-                            <select
-                              className="px-3 py-2 border rounded-md text-sm"
-                              data-testid="select-meridiem"
-                              value={meridiem}
-                              onChange={(e) => handleMeridiemChange(e.target.value)}
-                            >
-                              <option value="AM">AM</option>
-                              <option value="PM">PM</option>
-                            </select>
-                          </div>
-                        </div>
+                        <Input
+                          placeholder="e.g., Chapter 5 Homework"
+                          data-testid="input-task-title"
+                          {...field}
+                        />
                       </FormControl>
-                      <FormDescription>
-                        Set the due date and time for this task
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
-                  );
-                }}
-              />
+                  )}
+                />
 
-              {taskType === "text_file" && (
+                <FormField
+                  control={textForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe what students need to do..."
+                          className="min-h-[120px] resize-none"
+                          data-testid="input-task-description"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Provide clear instructions</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={textForm.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due Date</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="date"
+                            className="pl-10"
+                            data-testid="input-task-due-date"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="space-y-2">
                   <FormLabel>Attachment (Optional)</FormLabel>
                   <div
@@ -354,9 +310,7 @@ export default function TaskForm() {
                       <div className="flex items-center justify-center gap-3">
                         <FileText className="h-8 w-8 text-primary" />
                         <div className="text-left">
-                          <p className="font-medium">
-                            {file.name}
-                          </p>
+                          <p className="font-medium">{file.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
@@ -377,39 +331,213 @@ export default function TaskForm() {
                     ) : (
                       <>
                         <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload or drag and drop
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          PDF, DOC, DOCX, TXT, PNG, JPG up to 10MB
-                        </p>
+                        <p className="text-sm text-muted-foreground">Click to upload file</p>
                       </>
                     )}
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-end gap-3 pt-4">
-                <Link href={`/groups/${groupId}`}>
-                  <Button type="button" variant="outline" data-testid="button-cancel">
-                    Cancel
+                <div className="flex justify-end gap-3 pt-4">
+                  <Link href={`/groups/${groupId}`}>
+                    <Button type="button" variant="outline" data-testid="button-cancel">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="submit" disabled={isPending} data-testid="button-save-task">
+                    {isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Task"
+                    )}
                   </Button>
-                </Link>
-                <Button type="submit" disabled={isPending} data-testid="button-save-task">
-                  {isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Task"
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quiz Task Form */}
+      {taskMode === "quiz" && (
+        <Card>
+          <CardContent className="p-6">
+            <Form {...quizForm}>
+              <form onSubmit={quizForm.handleSubmit(handleSubmitQuiz)} className="space-y-6">
+                <FormField
+                  control={quizForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quiz Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Biology Quiz 1" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                />
+
+                <FormField
+                  control={quizForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Quiz instructions..."
+                          className="min-h-[80px] resize-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={quizForm.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due Date</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input type="date" className="pl-10" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Questions Section */}
+                <div className="space-y-4 border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Questions ({quizQuestions.length})</h3>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddQuestion}
+                      data-testid="button-add-question"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Question
+                    </Button>
+                  </div>
+
+                  {quizQuestions.map((question, idx) => (
+                    <Card key={question.tempId} className="p-4 bg-muted/50">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Question {idx + 1}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveQuestion(question.tempId)}
+                            data-testid="button-remove-question"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">Question Text</label>
+                          <Textarea
+                            placeholder="Enter question..."
+                            className="mt-1 resize-none"
+                            value={question.questionText}
+                            onChange={(e) =>
+                              handleUpdateQuestion(question.tempId, "questionText", e.target.value)
+                            }
+                            data-testid={`input-question-text-${idx}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">Question Type</label>
+                          <Select
+                            value={question.questionType}
+                            onValueChange={(value: any) =>
+                              handleUpdateQuestion(question.tempId, "questionType", value)
+                            }
+                          >
+                            <SelectTrigger data-testid={`select-question-type-${idx}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                              <SelectItem value="true_false">True/False</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {question.questionType === "multiple_choice" && (
+                          <div>
+                            <label className="text-sm font-medium">Options (one per line)</label>
+                            <Textarea
+                              placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"
+                              className="mt-1 resize-none"
+                              value={question.options || ""}
+                              onChange={(e) =>
+                                handleUpdateQuestion(question.tempId, "options", e.target.value)
+                              }
+                              data-testid={`input-question-options-${idx}`}
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="text-sm font-medium">
+                            {question.questionType === "multiple_choice"
+                              ? "Correct Option"
+                              : "Correct Answer"}
+                          </label>
+                          <Input
+                            placeholder={
+                              question.questionType === "multiple_choice"
+                                ? "e.g., Option A"
+                                : "True or False"
+                            }
+                            value={question.correctAnswer}
+                            onChange={(e) =>
+                              handleUpdateQuestion(question.tempId, "correctAnswer", e.target.value)
+                            }
+                            data-testid={`input-question-answer-${idx}`}
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Link href={`/groups/${groupId}`}>
+                    <Button type="button" variant="outline" data-testid="button-cancel">
+                      Cancel
+                    </Button>
+                  </Link>
+                  <Button type="submit" disabled={isPending} data-testid="button-save-task">
+                    {isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Quiz"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
