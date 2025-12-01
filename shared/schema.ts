@@ -97,10 +97,10 @@ export const joinGroupSchema = z.object({
 });
 
 export const questionSchema = z.object({
-  questionText: z.string().min(1, "Question is required"),
-  questionType: z.enum(questionTypes),
+  questionText: z.string(),
+  questionType: z.string(),
   options: z.string().optional(),
-  correctAnswer: z.string().min(1, "Correct answer is required"),
+  correctAnswer: z.string(),
 }).passthrough();
 
 export const insertTextTaskSchema = z.object({
@@ -113,12 +113,12 @@ export const insertTextTaskSchema = z.object({
 
 export const insertQuizTaskSchema = z.object({
   groupId: z.string(),
-  title: z.string().min(2, "Title must be at least 2 characters"),
-  description: z.string().min(1, "Description is required"),
+  title: z.string(),
+  description: z.string(),
   dueDate: z.string(),
-  taskType: z.literal("quiz").default("quiz"),
-  questions: z.array(questionSchema).min(1, "At least one question is required"),
-});
+  taskType: z.literal("quiz"),
+  questions: z.array(questionSchema),
+}).passthrough();
 
 export const insertSubmissionSchema = z.object({
   taskId: z.string(),

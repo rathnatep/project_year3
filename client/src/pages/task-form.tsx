@@ -168,47 +168,36 @@ export default function TaskForm() {
     if (quizQuestions.length === 0) {
       toast({
         title: "No questions",
-        description: "Please add at least one question",
+        description: "Add at least one question",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate questions
-    for (let idx = 0; idx < quizQuestions.length; idx++) {
-      const q = quizQuestions[idx];
-      
-      if (!q.questionText.trim()) {
+    for (const q of quizQuestions) {
+      if (!q.questionText?.trim()) {
         toast({
-          title: `Question ${idx + 1}: Empty`,
-          description: "All questions must have text",
+          title: "Empty question text",
           variant: "destructive",
         });
         return;
       }
-      
       if (!q.correctAnswer) {
         toast({
-          title: `Question ${idx + 1}: No answer`,
-          description: "Select a correct answer",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const opts = JSON.parse(q.options || '["","","",""]');
-      const nonEmpty = opts.filter((o: string) => o.trim());
-      if (nonEmpty.length < 2) {
-        toast({
-          title: `Question ${idx + 1}: Need 2+ options`,
+          title: "No correct answer selected",
           variant: "destructive",
         });
         return;
       }
     }
 
-    // Prepare questions for submission - only send required fields
-    const questions = quizQuestions.map(({ tempId, id, taskId, order, ...q }) => q);
+    const questions = quizQuestions.map((q) => ({
+      questionText: q.questionText,
+      questionType: q.questionType,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+    }));
+
     createTaskMutation.mutate({ ...data, taskType: "quiz", questions });
   };
 

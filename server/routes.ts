@@ -364,60 +364,48 @@ export async function registerRoutes(
         const task = await storage.createTask(taskData, fileUrl);
         return res.status(201).json(task);
       } else if (taskType === "quiz") {
-        // Parse questions
-        let questionsData = [];
         try {
-          questionsData = typeof req.body.questions === "string" 
-            ? JSON.parse(req.body.questions) 
-            : (req.body.questions || []);
-        } catch (e: any) {
-          return res.status(400).json({ message: "Invalid questions format" });
-        }
-        
-        // Validate
-        const taskData = {
-          groupId: req.params.groupId,
-          title: req.body.title,
-          description: req.body.description,
-          dueDate: req.body.dueDate,
-          taskType: "quiz" as const,
-          questions: questionsData,
-        };
+          // Get questions from FormData
+          const questionsRaw = req.body.questions;
+          let questions = [];
+          if (typeof questionsRaw === "string") {
+            questions = JSON.parse(questionsRaw);
+          } else if (Array.isArray(questionsRaw)) {
+            questions = questionsRaw;
+          }
 
-        try {
-          insertQuizTaskSchema.parse(taskData);
-        } catch (e: any) {
-          const msg = e.errors?.[0]?.message || e.message;
-          return res.status(400).json({ message: msg });
-        }
+          if (!Array.isArray(questions) || questions.length === 0) {
+            return res.status(400).json({ message: "No questions provided" });
+          }
 
-        try {
-          // Create task
-          const task = await storage.createTask({ 
-            groupId: taskData.groupId, 
-            title: taskData.title, 
-            description: taskData.description, 
-            dueDate: taskData.dueDate, 
-            taskType: "quiz" 
+          // Create the quiz task
+          const task = await storage.createTask({
+            groupId: req.params.groupId,
+            title: req.body.title,
+            description: req.body.description,
+            dueDate: req.body.dueDate,
+            taskType: "quiz"
           }, undefined);
-          
-          // Store questions
-          for (let i = 0; i < questionsData.length; i++) {
-            const q = questionsData[i];
+
+          // Store each question
+          for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
             await storage.createQuestion(
-              task.id, 
-              q.questionText, 
-              q.questionType, 
-              q.options || null, 
-              q.correctAnswer, 
+              task.id,
+              q.questionText || "",
+              q.questionType || "multiple_choice",
+              q.options ? JSON.stringify(q.options) : null,
+              q.correctAnswer || "",
               i
             );
           }
 
+          // Return the task
           const fullTask = await storage.getTaskById(task.id);
           return res.status(201).json(fullTask);
-        } catch (e: any) {
-          return res.status(500).json({ message: "Failed to create quiz: " + e.message });
+        } catch (err: any) {
+          console.error("Quiz error:", err);
+          return res.status(500).json({ message: err.message || "Failed to create quiz" });
         }
       } else {
         return res.status(400).json({ message: "Invalid task type" });
