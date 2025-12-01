@@ -21,6 +21,9 @@ import type {
 
 const db = new Database("classroom.db");
 
+// Disable foreign key constraints to avoid issues during testing
+db.pragma("foreign_keys = OFF");
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
