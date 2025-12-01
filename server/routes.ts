@@ -355,6 +355,7 @@ export async function registerRoutes(
           title: req.body.title,
           description: req.body.description,
           dueDate: req.body.dueDate,
+          taskType: "text_file" as const,
         };
 
         insertTextTaskSchema.parse(taskData);
@@ -368,12 +369,13 @@ export async function registerRoutes(
           title: req.body.title,
           description: req.body.description,
           dueDate: req.body.dueDate,
+          taskType: "quiz" as const,
           questions: req.body.questions ? JSON.parse(req.body.questions) : [],
         };
 
         insertQuizTaskSchema.parse(taskData);
 
-        const task = await storage.createTask({ groupId: taskData.groupId, title: taskData.title, description: taskData.description, dueDate: taskData.dueDate }, undefined);
+        const task = await storage.createTask({ groupId: taskData.groupId, title: taskData.title, description: taskData.description, dueDate: taskData.dueDate, taskType: "quiz" }, undefined);
         
         // Store questions
         if (taskData.questions && taskData.questions.length > 0) {

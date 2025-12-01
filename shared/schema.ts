@@ -108,6 +108,7 @@ export const insertTextTaskSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().min(1, "Description is required"),
   dueDate: z.string(),
+  taskType: z.literal("text_file").default("text_file"),
 });
 
 export const insertQuizTaskSchema = z.object({
@@ -115,6 +116,7 @@ export const insertQuizTaskSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().min(1, "Description is required"),
   dueDate: z.string(),
+  taskType: z.literal("quiz").default("quiz"),
   questions: z.array(questionSchema).min(1, "At least one question is required"),
 });
 

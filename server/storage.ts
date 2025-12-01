@@ -151,6 +151,8 @@ export interface IStorage {
   getTaskById(id: string): Promise<Task | undefined>;
   getTasksForGroup(groupId: string, userId: string, role: string): Promise<TaskWithSubmissionStatus[]>;
   deleteTask(id: string): Promise<void>;
+  createQuestion(taskId: string, questionText: string, questionType: string, options: string | null, correctAnswer: string, order: number): Promise<any>;
+  getQuestions(taskId: string): Promise<any[]>;
 
   createSubmission(submission: InsertSubmission, studentId: string, fileUrl?: string): Promise<Submission>;
   getSubmissionById(id: string): Promise<Submission | undefined>;
@@ -407,6 +409,25 @@ export class SQLiteStorage implements IStorage {
     
     // Delete task (no submissions to preserve)
     db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
+  }
+
+  async createQuestion(taskId: string, questionText: string, questionType: string, options: string | null, correctAnswer: string, order: number): Promise<any> {
+    const id = randomUUID();
+    const stmt = db.prepare(`
+      INSERT INTO questions (id, task_id, question_text, question_type, options, correct_answer, question_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(id, taskId, questionText, questionType, options, correctAnswer, order);
+    return { id, taskId, questionText, questionType, options, correctAnswer, order };
+  }
+
+  async getQuestions(taskId: string): Promise<any[]> {
+    const stmt = db.prepare(`
+      SELECT id, task_id as taskId, question_text as questionText, question_type as questionType, 
+             options, correct_answer as correctAnswer, question_order as order
+      FROM questions WHERE task_id = ? ORDER BY question_order ASC
+    `);
+    return stmt.all(taskId) as any[];
   }
 
   async createSubmission(submissionData: InsertSubmission, studentId: string, fileUrl?: string): Promise<Submission> {
