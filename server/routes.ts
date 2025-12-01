@@ -13,6 +13,7 @@ import {
   joinGroupSchema,
   insertTaskSchema,
   insertSubmissionSchema,
+  insertAnnouncementSchema,
   updateScoreSchema,
 } from "@shared/schema";
 

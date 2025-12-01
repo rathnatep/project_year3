@@ -300,24 +300,38 @@ export class SQLiteStorage implements IStorage {
   async createTask(taskData: InsertTask, fileUrl?: string): Promise<Task> {
     const id = randomUUID();
     const stmt = db.prepare(`
-      INSERT INTO tasks (id, group_id, title, description, due_date, file_url)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (id, group_id, title, description, task_type, due_date, file_url, options, correct_answer)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(id, taskData.groupId, taskData.title, taskData.description, taskData.dueDate, fileUrl || null);
+    stmt.run(
+      id,
+      taskData.groupId,
+      taskData.title,
+      taskData.description,
+      taskData.taskType,
+      taskData.dueDate,
+      fileUrl || null,
+      taskData.options || null,
+      taskData.correctAnswer || null
+    );
     
     return {
       id,
       groupId: taskData.groupId,
       title: taskData.title,
       description: taskData.description,
+      taskType: taskData.taskType,
       dueDate: taskData.dueDate,
       fileUrl: fileUrl || null,
+      options: taskData.options || null,
+      correctAnswer: taskData.correctAnswer || null,
     };
   }
 
   async getTaskById(id: string): Promise<Task | undefined> {
     const stmt = db.prepare(`
-      SELECT id, group_id as groupId, title, description, due_date as dueDate, file_url as fileUrl
+      SELECT id, group_id as groupId, title, description, task_type as taskType, due_date as dueDate, 
+             file_url as fileUrl, options, correct_answer as correctAnswer
       FROM tasks WHERE id = ?
     `);
     return stmt.get(id) as Task | undefined;
@@ -327,7 +341,8 @@ export class SQLiteStorage implements IStorage {
     if (role === "teacher") {
       const stmt = db.prepare(`
         SELECT 
-          t.id, t.group_id as groupId, t.title, t.description, t.due_date as dueDate, t.file_url as fileUrl,
+          t.id, t.group_id as groupId, t.title, t.description, t.task_type as taskType, t.due_date as dueDate, 
+          t.file_url as fileUrl, t.options, t.correct_answer as correctAnswer,
           (SELECT COUNT(*) FROM submissions WHERE task_id = t.id) as submissionCount,
           (SELECT COUNT(*) FROM group_members WHERE group_id = t.group_id) as totalStudents
         FROM tasks t
@@ -338,7 +353,8 @@ export class SQLiteStorage implements IStorage {
     } else {
       const stmt = db.prepare(`
         SELECT 
-          t.id, t.group_id as groupId, t.title, t.description, t.due_date as dueDate, t.file_url as fileUrl,
+          t.id, t.group_id as groupId, t.title, t.description, t.task_type as taskType, t.due_date as dueDate, 
+          t.file_url as fileUrl, t.options, t.correct_answer as correctAnswer,
           CASE 
             WHEN s.score IS NOT NULL THEN 'graded'
             WHEN s.id IS NOT NULL THEN 'submitted'
@@ -354,30 +370,6 @@ export class SQLiteStorage implements IStorage {
     }
   }
 
-  async updateTask(id: string, taskData: UpdateTask, fileUrl?: string | null): Promise<Task> {
-    const current = await this.getTaskById(id);
-    if (!current) throw new Error("Task not found");
-
-    const newTitle = taskData.title ?? current.title;
-    const newDescription = taskData.description ?? current.description;
-    const newDueDate = taskData.dueDate ?? current.dueDate;
-    const newFileUrl = fileUrl === undefined ? current.fileUrl : fileUrl;
-
-    const stmt = db.prepare(`
-      UPDATE tasks SET title = ?, description = ?, due_date = ?, file_url = ?
-      WHERE id = ?
-    `);
-    stmt.run(newTitle, newDescription, newDueDate, newFileUrl, id);
-
-    return {
-      id,
-      groupId: current.groupId,
-      title: newTitle,
-      description: newDescription,
-      dueDate: newDueDate,
-      fileUrl: newFileUrl,
-    };
-  }
 
   async deleteTask(id: string): Promise<void> {
     // Check if task has submissions
@@ -398,10 +390,18 @@ export class SQLiteStorage implements IStorage {
     const submittedAt = new Date().toISOString();
     
     const stmt = db.prepare(`
-      INSERT INTO submissions (id, task_id, student_id, text_content, file_url, submitted_at, score)
-      VALUES (?, ?, ?, ?, ?, ?, NULL)
+      INSERT INTO submissions (id, task_id, student_id, text_content, file_url, selected_answer, submitted_at, score)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
     `);
-    stmt.run(id, submissionData.taskId, studentId, submissionData.textContent || null, fileUrl || null, submittedAt);
+    stmt.run(
+      id,
+      submissionData.taskId,
+      studentId,
+      submissionData.textContent || null,
+      fileUrl || null,
+      submissionData.selectedAnswer || null,
+      submittedAt
+    );
     
     return {
       id,
@@ -409,6 +409,7 @@ export class SQLiteStorage implements IStorage {
       studentId,
       textContent: submissionData.textContent || null,
       fileUrl: fileUrl || null,
+      selectedAnswer: submissionData.selectedAnswer || null,
       submittedAt,
       score: null,
     };
@@ -417,7 +418,7 @@ export class SQLiteStorage implements IStorage {
   async getSubmissionById(id: string): Promise<Submission | undefined> {
     const stmt = db.prepare(`
       SELECT id, task_id as taskId, student_id as studentId, text_content as textContent,
-             file_url as fileUrl, submitted_at as submittedAt, score
+             file_url as fileUrl, selected_answer as selectedAnswer, submitted_at as submittedAt, score
       FROM submissions WHERE id = ?
     `);
     return stmt.get(id) as Submission | undefined;
@@ -426,7 +427,7 @@ export class SQLiteStorage implements IStorage {
   async getSubmissionForTask(taskId: string, studentId: string): Promise<Submission | undefined> {
     const stmt = db.prepare(`
       SELECT id, task_id as taskId, student_id as studentId, text_content as textContent,
-             file_url as fileUrl, submitted_at as submittedAt, score
+             file_url as fileUrl, selected_answer as selectedAnswer, submitted_at as submittedAt, score
       FROM submissions WHERE task_id = ? AND student_id = ?
     `);
     return stmt.get(taskId, studentId) as Submission | undefined;
@@ -435,7 +436,7 @@ export class SQLiteStorage implements IStorage {
   async getSubmissionsForTask(taskId: string): Promise<SubmissionWithStudent[]> {
     const stmt = db.prepare(`
       SELECT s.id, s.task_id as taskId, s.student_id as studentId, s.text_content as textContent,
-             s.file_url as fileUrl, s.submitted_at as submittedAt, s.score,
+             s.file_url as fileUrl, s.selected_answer as selectedAnswer, s.submitted_at as submittedAt, s.score,
              u.name as studentName, u.email as studentEmail
       FROM submissions s
       JOIN users u ON s.student_id = u.id
@@ -448,7 +449,7 @@ export class SQLiteStorage implements IStorage {
   async getAllSubmissionsForTeacher(teacherId: string): Promise<(SubmissionWithStudent & { taskTitle: string; groupName: string; taskId: string })[]> {
     const stmt = db.prepare(`
       SELECT s.id, s.task_id as taskId, s.student_id as studentId, s.text_content as textContent,
-             s.file_url as fileUrl, s.submitted_at as submittedAt, s.score,
+             s.file_url as fileUrl, s.selected_answer as selectedAnswer, s.submitted_at as submittedAt, s.score,
              u.name as studentName, u.email as studentEmail,
              t.title as taskTitle, t.id as taskId,
              g.name as groupName
@@ -496,7 +497,8 @@ export class SQLiteStorage implements IStorage {
   async getUpcomingTasksForStudent(studentId: string): Promise<TaskWithSubmissionStatus[]> {
     const stmt = db.prepare(`
       SELECT 
-        t.id, t.group_id as groupId, t.title, t.description, t.due_date as dueDate, t.file_url as fileUrl,
+        t.id, t.group_id as groupId, t.title, t.description, t.task_type as taskType, t.due_date as dueDate, 
+        t.file_url as fileUrl, t.options, t.correct_answer as correctAnswer,
         CASE 
           WHEN s.score IS NOT NULL THEN 'graded'
           WHEN s.id IS NOT NULL THEN 'submitted'
@@ -516,7 +518,8 @@ export class SQLiteStorage implements IStorage {
   async getAllTasksForStudent(studentId: string): Promise<any[]> {
     const stmt = db.prepare(`
       SELECT 
-        t.id, t.group_id as groupId, t.title, t.description, t.due_date as dueDate, t.file_url as fileUrl,
+        t.id, t.group_id as groupId, t.title, t.description, t.task_type as taskType, t.due_date as dueDate, 
+        t.file_url as fileUrl, t.options, t.correct_answer as correctAnswer,
         g.name as groupName,
         CASE 
           WHEN s.score IS NOT NULL THEN 'graded'
@@ -610,6 +613,63 @@ export class SQLiteStorage implements IStorage {
         taskCount: g.taskCount,
       })),
     };
+  }
+
+  async createAnnouncement(announcement: InsertAnnouncement, teacherId: string): Promise<Announcement> {
+    const id = randomUUID();
+    const createdAt = new Date().toISOString();
+    
+    const stmt = db.prepare(`
+      INSERT INTO announcements (id, group_id, teacher_id, message, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(id, announcement.groupId, teacherId, announcement.message, createdAt);
+    
+    return {
+      id,
+      groupId: announcement.groupId,
+      teacherId,
+      message: announcement.message,
+      createdAt,
+    };
+  }
+
+  async getAnnouncementsForGroup(groupId: string, studentId?: string): Promise<AnnouncementWithTeacher[]> {
+    if (studentId) {
+      const stmt = db.prepare(`
+        SELECT 
+          a.id, a.group_id as groupId, a.teacher_id as teacherId, a.message, a.created_at as createdAt,
+          u.name as teacherName,
+          CASE WHEN ar.student_id IS NOT NULL THEN 1 ELSE 0 END as isRead
+        FROM announcements a
+        JOIN users u ON a.teacher_id = u.id
+        LEFT JOIN announcement_reads ar ON a.id = ar.announcement_id AND ar.student_id = ?
+        WHERE a.group_id = ?
+        ORDER BY a.created_at DESC
+      `);
+      return stmt.all(studentId, groupId) as AnnouncementWithTeacher[];
+    } else {
+      const stmt = db.prepare(`
+        SELECT 
+          a.id, a.group_id as groupId, a.teacher_id as teacherId, a.message, a.created_at as createdAt,
+          u.name as teacherName,
+          0 as isRead
+        FROM announcements a
+        JOIN users u ON a.teacher_id = u.id
+        WHERE a.group_id = ?
+        ORDER BY a.created_at DESC
+      `);
+      return stmt.all(groupId) as AnnouncementWithTeacher[];
+    }
+  }
+
+  async markAnnouncementAsRead(announcementId: string, studentId: string): Promise<void> {
+    const id = randomUUID();
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO announcement_reads (id, announcement_id, student_id)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(id, announcementId, studentId);
   }
 
   async getAnalyticsForTeacher(teacherId: string): Promise<{
