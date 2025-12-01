@@ -410,6 +410,26 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/tasks/urgent", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (req.user?.role !== "student") {
+        return res.json([]);
+      }
+      const tasks = await storage.getUpcomingTasksForStudent(req.user.id);
+      const now = new Date();
+      const twelveHoursFromNow = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+      
+      const urgentTasks = tasks.filter(task => {
+        const dueDate = new Date(task.dueDate);
+        return dueDate > now && dueDate <= twelveHoursFromNow && task.submissionStatus === "not_submitted";
+      });
+      
+      res.json(urgentTasks);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/tasks/all", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
       if (req.user?.role !== "student") {
