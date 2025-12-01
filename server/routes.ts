@@ -595,17 +595,28 @@ export async function registerRoutes(
 
   app.get("/api/analytics/export-csv", authenticateToken, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const submissions = await storage.getAllSubmissionsForTeacher(req.user!.id);
+      const groupId = req.query.groupId as string;
       
-      let csv = "Task,Group,Student Name,Student Email,Submitted At,Score\n";
+      if (!groupId) {
+        return res.status(400).json({ message: "Group ID is required" });
+      }
+
+      const group = await storage.getGroupById(groupId);
+      if (!group || group.ownerId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const submissions = await storage.getSubmissionsForGroup(groupId);
+      
+      let csv = "Task,Student Name,Student Email,Submitted At,Score\n";
       submissions.forEach((sub) => {
         const score = sub.score !== null ? sub.score : "Not Graded";
         const submitted = new Date(sub.submittedAt).toLocaleString();
-        csv += `"${sub.taskTitle}","${sub.groupName}","${sub.studentName}","${sub.studentEmail}","${submitted}","${score}"\n`;
+        csv += `"${sub.taskTitle}","${sub.studentName}","${sub.studentEmail}","${submitted}","${score}"\n`;
       });
 
       res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", 'attachment; filename="grades-report.csv"');
+      res.setHeader("Content-Disposition", `attachment; filename="${group.name}-grades.csv"`);
       res.send(csv);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

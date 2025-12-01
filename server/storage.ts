@@ -481,6 +481,21 @@ export class SQLiteStorage implements IStorage {
     return stmt.all(teacherId) as (SubmissionWithStudent & { taskTitle: string; groupName: string; taskId: string })[];
   }
 
+  async getSubmissionsForGroup(groupId: string): Promise<(SubmissionWithStudent & { taskTitle: string; taskId: string })[]> {
+    const stmt = db.prepare(`
+      SELECT s.id, s.task_id as taskId, s.student_id as studentId, s.text_content as textContent,
+             s.file_url as fileUrl, s.submitted_at as submittedAt, s.score,
+             u.name as studentName, u.email as studentEmail,
+             t.title as taskTitle
+      FROM submissions s
+      JOIN users u ON s.student_id = u.id
+      JOIN tasks t ON s.task_id = t.id
+      WHERE t.group_id = ?
+      ORDER BY s.submitted_at DESC
+    `);
+    return stmt.all(groupId) as (SubmissionWithStudent & { taskTitle: string; taskId: string })[];
+  }
+
   async updateSubmissionScore(id: string, score: number): Promise<Submission> {
     const stmt = db.prepare("UPDATE submissions SET score = ? WHERE id = ?");
     stmt.run(score, id);
