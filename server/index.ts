@@ -126,8 +126,12 @@ app.use((req, res, next) => {
         log(`serving on port ${port}`);
       },
     );
-  } catch (err) {
-    console.error("Failed to start server:", err);
-    process.exit(1);
+  } catch (err: any) {
+    console.error("Failed to start server:", err.message || err);
+    // Only exit if it's a critical error
+    if (err.code === "EADDRINUSE") {
+      process.exit(1);
+    }
+    // Otherwise allow app to continue with limited functionality
   }
 })();
