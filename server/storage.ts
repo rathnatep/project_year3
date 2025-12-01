@@ -436,7 +436,7 @@ export class SQLiteStorage implements IStorage {
   async getSubmissionById(id: string): Promise<Submission | undefined> {
     const stmt = db.prepare(`
       SELECT id, task_id as taskId, student_id as studentId, text_content as textContent,
-             file_url as fileUrl, selected_answer as selectedAnswer, submitted_at as submittedAt, score
+             file_url as fileUrl, submitted_at as submittedAt, score
       FROM submissions WHERE id = ?
     `);
     return stmt.get(id) as Submission | undefined;
@@ -445,7 +445,7 @@ export class SQLiteStorage implements IStorage {
   async getSubmissionForTask(taskId: string, studentId: string): Promise<Submission | undefined> {
     const stmt = db.prepare(`
       SELECT id, task_id as taskId, student_id as studentId, text_content as textContent,
-             file_url as fileUrl, selected_answer as selectedAnswer, submitted_at as submittedAt, score
+             file_url as fileUrl, submitted_at as submittedAt, score
       FROM submissions WHERE task_id = ? AND student_id = ?
     `);
     return stmt.get(taskId, studentId) as Submission | undefined;
@@ -454,7 +454,7 @@ export class SQLiteStorage implements IStorage {
   async getSubmissionsForTask(taskId: string): Promise<SubmissionWithStudent[]> {
     const stmt = db.prepare(`
       SELECT s.id, s.task_id as taskId, s.student_id as studentId, s.text_content as textContent,
-             s.file_url as fileUrl, s.selected_answer as selectedAnswer, s.submitted_at as submittedAt, s.score,
+             s.file_url as fileUrl, s.submitted_at as submittedAt, s.score,
              u.name as studentName, u.email as studentEmail
       FROM submissions s
       JOIN users u ON s.student_id = u.id
