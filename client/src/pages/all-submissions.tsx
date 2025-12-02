@@ -55,7 +55,7 @@ export default function AllSubmissions() {
     enabled: !!token,
   });
 
-  const { data: groups: allGroups } = useQuery<Array<{ id: string; name: string; ownerId: string }>>({
+  const { data: allGroups } = useQuery<Array<{ id: string; name: string; ownerId: string }>>({
     queryKey: ["/api/groups"],
     enabled: !!token,
   });
