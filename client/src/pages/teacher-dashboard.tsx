@@ -40,6 +40,11 @@ export default function TeacherDashboard() {
     enabled: !!token,
   });
 
+  const { data: announcementData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["/api/announcements/unread/count"],
+    enabled: !!token,
+  });
+
   const getInitials = (name?: string) => {
     if (!name) return "NA";
     return name
@@ -54,7 +59,12 @@ export default function TeacherDashboard() {
     <div className="min-h-screen bg-background">
       <div className="p-6 lg:p-10 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name?.split(" ")[0]}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name?.split(" ")[0]}</h1>
+            {announcementData?.unreadCount ?? 0 > 0 && (
+              <Badge variant="destructive" className="ml-auto">{announcementData.unreadCount} new announcements</Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">Manage your classes and review submissions</p>
         </div>
 
