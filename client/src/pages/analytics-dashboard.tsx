@@ -97,9 +97,10 @@ export default function AnalyticsDashboard() {
     );
   }
 
+  const groupStats = analytics.groupStats || [];
   const pieData = [
-    { name: "Submitted", value: analytics.totalSubmissions, fill: "#3b82f6" },
-    { name: "Pending", value: Math.max(0, (analytics.totalTasks * 3) - analytics.totalSubmissions), fill: "#e5e7eb" },
+    { name: "Submitted", value: analytics.totalSubmissions || 0, fill: "#3b82f6" },
+    { name: "Pending", value: Math.max(0, ((analytics.totalTasks || 0) * 3) - (analytics.totalSubmissions || 0)), fill: "#e5e7eb" },
   ];
 
   return (
@@ -172,9 +173,9 @@ export default function AnalyticsDashboard() {
             <CardDescription>Submission rates and average scores by group</CardDescription>
           </CardHeader>
           <CardContent>
-            {analytics.groupStats.length > 0 ? (
+            {groupStats.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics.groupStats}>
+                <BarChart data={groupStats}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="groupName" angle={-45} textAnchor="end" height={80} />
                   <YAxis />
@@ -199,8 +200,8 @@ export default function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {analytics.groupStats.length > 0 ? (
-                analytics.groupStats.map((group, idx) => (
+              {groupStats.length > 0 ? (
+                groupStats.map((group, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <div>
                       <p className="font-medium text-sm">{group.groupName}</p>

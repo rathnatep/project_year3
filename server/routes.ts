@@ -577,6 +577,14 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/unread-counts", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      res.json({ unreadCount: 0 });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/analytics", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const isTeacher = req.user!.role === "teacher";

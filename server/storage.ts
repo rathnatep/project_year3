@@ -352,7 +352,75 @@ export class SQLiteStorage implements IStorage {
   }
 
   async getAnalyticsForTeacher(teacherId: string): Promise<any> {
-    return await this.getTeacherStats(teacherId);
+    const teacherGroups = await db.select().from(groups).where(eq(groups.ownerId, teacherId));
+    const groupIds = teacherGroups.map((g) => g.id);
+
+    let totalGroups = teacherGroups.length;
+    let totalTasks = 0;
+    let totalSubmissions = 0;
+    let totalScore = 0;
+    let gradedCount = 0;
+    const groupStats: any[] = [];
+
+    if (groupIds.length > 0) {
+      const groupTasks = await db.select().from(tasks).where(inArray(tasks.groupId, groupIds));
+      totalTasks = groupTasks.length;
+      const taskIds = groupTasks.map((t) => t.id);
+
+      if (taskIds.length > 0) {
+        const allSubs = await db.select().from(submissions).where(inArray(submissions.taskId, taskIds));
+        totalSubmissions = allSubs.length;
+        allSubs.forEach((sub) => {
+          if (sub.score !== null) {
+            totalScore += sub.score;
+            gradedCount++;
+          }
+        });
+      }
+
+      // Build group stats
+      for (const group of teacherGroups) {
+        const groupTaskList = groupTasks.filter((t) => t.groupId === group.id);
+        const groupTaskIds = groupTaskList.map((t) => t.id);
+        let groupSubmissions = 0;
+        let groupScore = 0;
+        let groupGradedCount = 0;
+
+        if (groupTaskIds.length > 0) {
+          const groupSubs = await db
+            .select()
+            .from(submissions)
+            .where(inArray(submissions.taskId, groupTaskIds));
+          groupSubmissions = groupSubs.length;
+          groupSubs.forEach((sub) => {
+            if (sub.score !== null) {
+              groupScore += sub.score;
+              groupGradedCount++;
+            }
+          });
+        }
+
+        groupStats.push({
+          groupName: group.name,
+          submissionRate:
+            groupTaskList.length > 0 ? Math.round((groupSubmissions / (groupTaskList.length * 3)) * 100) : 0,
+          averageScore: groupGradedCount > 0 ? Math.round(groupScore / groupGradedCount) : 0,
+          taskCount: groupTaskList.length,
+        });
+      }
+    }
+
+    const submissionRate = totalTasks > 0 ? Math.round((totalSubmissions / (totalTasks * 3)) * 100) : 0;
+    const averageScore = gradedCount > 0 ? Math.round(totalScore / gradedCount) : 0;
+
+    return {
+      totalGroups,
+      totalTasks,
+      totalSubmissions,
+      averageScore,
+      submissionRate,
+      groupStats,
+    };
   }
 
   async getAnalyticsForStudent(studentId: string): Promise<any> {
@@ -360,13 +428,29 @@ export class SQLiteStorage implements IStorage {
     const taskIds = tasks.map((t) => t.id);
     let completed = 0;
     let total = tasks.length;
+    let totalScore = 0;
+    let gradedCount = 0;
 
     if (taskIds.length > 0) {
       const subs = await db.select().from(submissions).where(inArray(submissions.taskId, taskIds));
-      completed = subs.filter((s) => s.studentId === studentId).length;
+      const studentSubs = subs.filter((s) => s.studentId === studentId);
+      completed = studentSubs.length;
+      studentSubs.forEach((sub) => {
+        if (sub.score !== null) {
+          totalScore += sub.score;
+          gradedCount++;
+        }
+      });
     }
 
-    return { completed, total };
+    return {
+      totalGroups: 0,
+      totalTasks: total,
+      totalSubmissions: completed,
+      averageScore: gradedCount > 0 ? Math.round(totalScore / gradedCount) : 0,
+      submissionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+      groupStats: [],
+    };
   }
 }
 
