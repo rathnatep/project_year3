@@ -117,6 +117,39 @@ export default function AllSubmissions() {
   const gradedSubmissions = filteredSubmissions?.filter((s) => s.score !== null) || [];
   const pendingSubmissions = filteredSubmissions?.filter((s) => s.score === null) || [];
 
+  // Get group ID for CSV export
+  const groupsWithIds = submissions?.reduce((acc, sub) => {
+    if (!acc.find((g) => g.name === sub.groupName)) {
+      acc.push({ name: sub.groupName, id: sub.groupName });
+    }
+    return acc;
+  }, [] as Array<{ name: string; id: string }>);
+
+  const getGroupIdByName = (groupName: string): string => {
+    return groupsWithIds?.find((g) => g.name === groupName)?.id || "";
+  };
+
+  const handleExportCsv = () => {
+    if (groupFilter === "all") {
+      toast({
+        title: "Select a group",
+        description: "Please select a specific group to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const groupId = getGroupIdByName(groupFilter);
+    if (!groupId) {
+      toast({
+        title: "Error",
+        description: "Could not find group ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.location.href = `/api/analytics/export-csv/${groupId}`;
+  };
+
   // Pagination logic
   const paginateItems = (items: typeof pendingSubmissions) => {
     const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -151,21 +184,27 @@ export default function AllSubmissions() {
             {submissions?.length || 0} total submissions across all groups
           </p>
         </div>
-        {groups.length > 1 && (
-          <Select value={groupFilter} onValueChange={(value) => { setGroupFilter(value); setCurrentPage(1); }}>
-            <SelectTrigger className="w-[200px]" data-testid="select-group-filter">
-              <SelectValue placeholder="Filter by group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Groups</SelectItem>
-              {groups.map((group) => (
-                <SelectItem key={group} value={group}>
-                  {group}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <div className="flex gap-2">
+          {groups.length > 1 && (
+            <Select value={groupFilter} onValueChange={(value) => { setGroupFilter(value); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[200px]" data-testid="select-group-filter">
+                <SelectValue placeholder="Filter by group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Groups</SelectItem>
+                {groups.map((group) => (
+                  <SelectItem key={group} value={group}>
+                    {group}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button onClick={handleExportCsv} variant="outline" size="sm" className="gap-2" data-testid="button-export-csv">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="pending" className="space-y-6">

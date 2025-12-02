@@ -61,8 +61,8 @@ export default function TeacherDashboard() {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name?.split(" ")[0]}</h1>
-            {announcementData?.unreadCount ?? 0 > 0 && (
-              <Badge variant="destructive" className="ml-auto">{announcementData.unreadCount} new announcements</Badge>
+            {(announcementData?.unreadCount ?? 0) > 0 && (
+              <Badge variant="destructive" className="ml-auto">{announcementData?.unreadCount} new announcements</Badge>
             )}
           </div>
           <p className="text-muted-foreground">Manage your classes and review submissions</p>
