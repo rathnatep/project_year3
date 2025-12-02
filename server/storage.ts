@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
+import { createDatabaseConnection } from "../config/database";
 import type {
   User,
   Group,
@@ -20,7 +21,7 @@ import type {
   SubmissionWithStudent,
 } from "@shared/schema";
 
-const db = new Database("classroom.db");
+const db = createDatabaseConnection();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (

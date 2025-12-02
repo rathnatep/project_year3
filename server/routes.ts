@@ -17,9 +17,11 @@ import {
   insertAnnouncementSchema,
 } from "@shared/schema";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "classroom-management-secret-key";
+import { serverConfig } from "../config/server";
 
-const uploadsDir = path.join(process.cwd(), "uploads");
+const JWT_SECRET = serverConfig.jwt.secret;
+
+const uploadsDir = serverConfig.uploads.directory;
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -37,22 +39,22 @@ const multerStorage = multer.diskStorage({
 
 const upload = multer({
   storage: multerStorage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: serverConfig.uploads.maxFileSize },
   fileFilter: (_req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|zip/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname || mimetype) {
+    const allowedMimeTypes = serverConfig.uploads.allowedTypes;
+    if (allowedMimeTypes.includes(file.mimetype)) {
       return cb(null, true);
     }
-    cb(new Error(`Invalid file type. Allowed types: PDF, DOC, DOCX, TXT, PNG, JPG, JPEG, GIF, ZIP (max 10MB)`));
+    const maxSizeMB = Math.round(serverConfig.uploads.maxFileSize / (1024 * 1024));
+    cb(new Error(`Invalid file type. Allowed types: ${serverConfig.uploads.allowedTypes.join(', ')} (max ${maxSizeMB}MB)`));
   },
 });
 
 const uploadErrorHandler = (err: any, req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({ message: "File size exceeds 10MB limit" });
+      const maxSizeMB = Math.round(serverConfig.uploads.maxFileSize / (1024 * 1024));
+      return res.status(400).json({ message: `File size exceeds ${maxSizeMB}MB limit` });
     }
     return res.status(400).json({ message: `Upload error: ${err.message}` });
   } else if (err) {
@@ -124,7 +126,7 @@ export async function registerRoutes(
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role, name: user.name },
         JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: serverConfig.jwt.expiresIn }
       );
 
       const { passwordHash, ...userWithoutPassword } = user;
@@ -154,7 +156,7 @@ export async function registerRoutes(
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role, name: user.name },
         JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: serverConfig.jwt.expiresIn }
       );
 
       const { passwordHash, ...userWithoutPassword } = user;
