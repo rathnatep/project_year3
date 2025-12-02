@@ -2,7 +2,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,29 +60,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Seed test users on startup
-  const teacherExists = await storage.getUserByEmail("teprathna@gmail.com");
-  if (!teacherExists) {
-    await storage.createUser({
-      name: "Tep Rathna",
-      email: "teprathna@gmail.com",
-      password: "teacher123",
-      role: "teacher",
-    });
-    log("Created test teacher user: teprathna@gmail.com");
-  }
-
-  const studentExists = await storage.getUserByEmail("rathna@gmail.com");
-  if (!studentExists) {
-    await storage.createUser({
-      name: "rathna",
-      email: "rathna@gmail.com",
-      password: "student123",
-      role: "student",
-    });
-    log("Created test student user: rathna@gmail.com");
-  }
-
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
