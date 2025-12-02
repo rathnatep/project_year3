@@ -48,7 +48,6 @@ export default function AllSubmissions() {
   const [scores, setScores] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [groupFilter, setGroupFilter] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: submissions, isLoading } = useQuery<SubmissionWithTask[]>({
@@ -111,11 +110,9 @@ export default function AllSubmissions() {
 
   const groups = [...new Set(submissions?.map((s) => s.groupName) || [])];
 
-  const filteredSubmissions = submissions?.filter((s) => {
-    const matchesGroup = groupFilter === "all" || s.groupName === groupFilter;
-    const matchesSearch = searchTerm === "" || s.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) || s.taskTitle?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesGroup && matchesSearch;
-  });
+  const filteredSubmissions = submissions?.filter(
+    (s) => groupFilter === "all" || s.groupName === groupFilter
+  );
 
   const gradedSubmissions = filteredSubmissions?.filter((s) => s.score !== null) || [];
   const pendingSubmissions = filteredSubmissions?.filter((s) => s.score === null) || [];
@@ -147,14 +144,13 @@ export default function AllSubmissions() {
 
   return (
     <div className="p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Review Submissions</h1>
-        <p className="text-muted-foreground">
-          {submissions?.length || 0} total submissions across all groups
-        </p>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 mt-4">
-        <Input placeholder="Search by student name or task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="flex-1 max-w-xs" data-testid="input-search-submissions" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Review Submissions</h1>
+          <p className="text-muted-foreground">
+            {submissions?.length || 0} total submissions across all groups
+          </p>
+        </div>
         {groups.length > 1 && (
           <Select value={groupFilter} onValueChange={(value) => { setGroupFilter(value); setCurrentPage(1); }}>
             <SelectTrigger className="w-[200px]" data-testid="select-group-filter">
