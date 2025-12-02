@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import type { SubmissionWithStudent, TaskWithSubmissionStatus } from "@shared/schema";
+import type { SubmissionWithStudent, TaskWithSubmissionStatus, AnnouncementWithTeacher } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Clock,
   CheckCircle2,
+  Bell,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,11 @@ export default function TeacherDashboard() {
     enabled: !!token,
   });
 
+  const { data: recentAnnouncements } = useQuery<AnnouncementWithTeacher[]>({
+    queryKey: ["/api/announcements/all"],
+    enabled: !!token,
+  });
+
   const getInitials = (name?: string) => {
     if (!name) return "NA";
     return name
@@ -55,12 +61,31 @@ export default function TeacherDashboard() {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name?.split(" ")[0]}</h1>
-            {(announcementData?.unreadCount ?? 0) > 0 && (
-              <Badge variant="destructive" className="ml-auto">{announcementData?.unreadCount} new announcements</Badge>
-            )}
           </div>
           <p className="text-muted-foreground">Manage your classes and review submissions</p>
         </div>
+
+        {recentAnnouncements && recentAnnouncements.length > 0 && (
+          <Card className="border-l-4 border-l-info bg-gradient-to-r from-info/5 to-transparent">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-info" />
+                <CardTitle className="text-info">Recent Announcement</CardTitle>
+                {(announcementData?.unreadCount ?? 0) > 0 && (
+                  <Badge className="ml-auto bg-info/20 text-info border-info/30">{announcementData?.unreadCount} unread</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                {recentAnnouncements[0].message}
+              </p>
+              <p className="text-xs text-muted-foreground mt-3">
+                {format(new Date(recentAnnouncements[0].createdAt), "MMM d, yyyy h:mm a")}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-gradient-to-br from-card to-background border-primary/20 hover-elevate">

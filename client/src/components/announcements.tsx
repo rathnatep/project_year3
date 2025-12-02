@@ -77,9 +77,9 @@ export function Announcements({ groupId, isTeacher = false }: AnnouncementsProps
   return (
     <div className="space-y-6">
       {isTeacher && (
-        <Card>
+        <Card className="border-l-4 border-l-info bg-gradient-to-r from-info/5 to-transparent">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2 text-info">
               <Bell className="h-5 w-5" />
               Post Announcement
             </CardTitle>
@@ -112,11 +112,11 @@ export function Announcements({ groupId, isTeacher = false }: AnnouncementsProps
 
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5 text-info" />
           Announcements
-          {announcements && (
-            <Badge variant="secondary" className="ml-auto">
-              {announcements.length}
+          {announcements && announcements.length > 0 && (
+            <Badge className="ml-auto bg-info/20 text-info border-info/30" data-testid="badge-announcement-count">
+              {announcements.length} {announcements.length === 1 ? 'new' : 'new'}
             </Badge>
           )}
         </h3>
@@ -137,22 +137,28 @@ export function Announcements({ groupId, isTeacher = false }: AnnouncementsProps
         ) : announcements && announcements.length > 0 ? (
           <div className="space-y-3">
             {announcements.map((announcement) => (
-              <Card key={announcement.id} className="hover-elevate">
+              <Card 
+                key={announcement.id} 
+                className="hover-elevate border-l-4 border-l-info bg-gradient-to-r from-info/3 to-transparent"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <CardTitle className="text-base">{announcement.teacherName}</CardTitle>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <span className="text-info">📢</span>
+                        {announcement.teacherName}
+                      </CardTitle>
                       <p className="text-xs text-muted-foreground mt-1">
                         {format(new Date(announcement.createdAt), "MMM d, yyyy h:mm a")}
                       </p>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge className="text-xs bg-info/20 text-info border-info/30">
                       Announcement
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="text-announcement-message">
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed" data-testid="text-announcement-message">
                     {announcement.message}
                   </p>
                 </CardContent>
@@ -160,10 +166,10 @@ export function Announcements({ groupId, isTeacher = false }: AnnouncementsProps
             ))}
           </div>
         ) : (
-          <Card>
+          <Card className="bg-gradient-to-br from-muted/20 to-transparent">
             <CardContent className="pt-6 text-center">
-              <Bell className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No announcements yet</p>
+              <Bell className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
+              <p className="text-muted-foreground font-medium">No announcements yet</p>
               {isTeacher && (
                 <p className="text-xs text-muted-foreground mt-2">
                   Post an announcement to keep your students informed
