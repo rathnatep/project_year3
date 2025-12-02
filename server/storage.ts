@@ -138,6 +138,7 @@ export interface IStorage {
 
   createAnnouncement(announcement: InsertAnnouncement, teacherId: string): Promise<Announcement>;
   getAnnouncementsForGroup(groupId: string): Promise<AnnouncementWithTeacher[]>;
+  getAllAnnouncementsForUser(userId: string, role: string): Promise<AnnouncementWithTeacher[]>;
   markAnnouncementAsRead(announcementId: string, studentId: string): Promise<void>;
 }
 
@@ -774,6 +775,33 @@ export class SQLiteStorage implements IStorage {
 
     const result = stmt.get(studentId, studentId) as { count: number };
     return result.count;
+  }
+
+  async getAllAnnouncementsForUser(userId: string, role: string): Promise<AnnouncementWithTeacher[]> {
+    let stmt;
+    if (role === 'teacher') {
+      stmt = db.prepare(`
+        SELECT a.id, a.group_id as groupId, a.teacher_id as teacherId, a.message, a.created_at as createdAt, u.name as teacherName
+        FROM announcements a
+        JOIN users u ON a.teacher_id = u.id
+        WHERE a.teacher_id = ?
+        ORDER BY a.created_at DESC
+        LIMIT 20
+      `);
+      return stmt.all(userId) as AnnouncementWithTeacher[];
+    } else {
+      stmt = db.prepare(`
+        SELECT a.id, a.group_id as groupId, a.teacher_id as teacherId, a.message, a.created_at as createdAt, u.name as teacherName
+        FROM announcements a
+        JOIN users u ON a.teacher_id = u.id
+        WHERE a.group_id IN (
+          SELECT group_id FROM group_members WHERE user_id = ?
+        )
+        ORDER BY a.created_at DESC
+        LIMIT 20
+      `);
+      return stmt.all(userId) as AnnouncementWithTeacher[];
+    }
   }
 
   async getSubmissionsForTeacherByGroup(teacherId: string, groupId: string): Promise<SubmissionWithStudent[]> {

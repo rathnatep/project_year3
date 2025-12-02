@@ -637,6 +637,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/announcements/all", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const announcements = await storage.getAllAnnouncementsForUser(req.user!.id, req.user!.role);
+      res.json(announcements);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/analytics/export-csv/:groupId", authenticateToken, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const group = await storage.getGroupById(req.params.groupId);
