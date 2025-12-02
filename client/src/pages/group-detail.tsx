@@ -94,6 +94,9 @@ export default function GroupDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
       toast({
         title: "Group deleted",
         description: "The group has been permanently removed.",
@@ -115,6 +118,9 @@ export default function GroupDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
       toast({
         title: "Left group",
         description: "You have left this group.",

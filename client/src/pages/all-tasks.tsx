@@ -6,6 +6,7 @@ import type { TaskWithSubmissionStatus } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -30,6 +31,7 @@ interface TaskWithGroup extends TaskWithSubmissionStatus {
 export default function AllTasks() {
   const { token } = useAuth();
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   const { data: tasks, isLoading } = useQuery<TaskWithGroup[]>({
     queryKey: ["/api/tasks/all"],
@@ -79,8 +81,12 @@ export default function AllTasks() {
   // Get unique groups
   const groups = [...new Set(tasks?.map((t) => t.groupName) || [])];
 
-  // Filter by group
-  const allTasks = tasks?.filter((t) => groupFilter === "all" || t.groupName === groupFilter) || [];
+  // Filter by group and search term
+  const allTasks = tasks?.filter((t) => {
+    const matchesGroup = groupFilter === "all" || t.groupName === groupFilter;
+    const matchesSearch = searchTerm === "" || t.title.toLowerCase().includes(searchTerm.toLowerCase()) || t.groupName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesGroup && matchesSearch;
+  }) || [];
 
   // Sort tasks by due date
   const sortedTasks = allTasks.sort((a, b) => 
@@ -109,11 +115,12 @@ export default function AllTasks() {
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">All Tasks</h1>
-          <p className="text-muted-foreground">View all tasks from your enrolled groups</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold">All Tasks</h1>
+        <p className="text-muted-foreground">View all tasks from your enrolled groups</p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Input placeholder="Search tasks by name or group..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="flex-1 max-w-xs" data-testid="input-search-tasks" />
         {groups.length > 1 && (
           <Select value={groupFilter} onValueChange={(value) => setGroupFilter(value)}>
             <SelectTrigger className="w-[200px]" data-testid="select-group-filter">
