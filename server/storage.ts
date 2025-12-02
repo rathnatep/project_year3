@@ -7,11 +7,14 @@ import type {
   GroupMember,
   Task,
   Submission,
+  Announcement,
+  AnnouncementWithTeacher,
   InsertUser,
   InsertGroup,
   InsertTask,
   UpdateTask,
   InsertSubmission,
+  InsertAnnouncement,
   GroupWithMembers,
   TaskWithSubmissionStatus,
   SubmissionWithStudent,
@@ -67,6 +70,26 @@ db.exec(`
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE(task_id, student_id)
   );
+
+  CREATE TABLE IF NOT EXISTS announcements (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    teacher_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS announcement_reads (
+    id TEXT PRIMARY KEY,
+    announcement_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    read_at TEXT NOT NULL,
+    FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE SET NULL,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE(announcement_id, student_id)
+  );
 `);
 
 function generateJoinCode(): string {
@@ -112,6 +135,10 @@ export interface IStorage {
 
   getUnreadSubmissionCount(teacherId: string): Promise<number>;
   getUnreadTaskCount(studentId: string): Promise<number>;
+
+  createAnnouncement(announcement: InsertAnnouncement, teacherId: string): Promise<Announcement>;
+  getAnnouncementsForGroup(groupId: string): Promise<AnnouncementWithTeacher[]>;
+  markAnnouncementAsRead(announcementId: string, studentId: string): Promise<void>;
 }
 
 export class SQLiteStorage implements IStorage {
@@ -691,6 +718,47 @@ export class SQLiteStorage implements IStorage {
 
     const result = stmt.get(studentId, studentId) as { count: number };
     return result.count;
+  }
+
+  async createAnnouncement(announcement: InsertAnnouncement, teacherId: string): Promise<Announcement> {
+    const id = randomUUID();
+    const createdAt = new Date().toISOString();
+
+    const stmt = db.prepare(`
+      INSERT INTO announcements (id, group_id, teacher_id, message, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(id, announcement.groupId, teacherId, announcement.message, createdAt);
+
+    return {
+      id,
+      groupId: announcement.groupId,
+      teacherId,
+      message: announcement.message,
+      createdAt,
+    };
+  }
+
+  async getAnnouncementsForGroup(groupId: string): Promise<AnnouncementWithTeacher[]> {
+    const stmt = db.prepare(`
+      SELECT a.id, a.group_id as groupId, a.teacher_id as teacherId, a.message, a.created_at as createdAt, u.name as teacherName
+      FROM announcements a
+      JOIN users u ON a.teacher_id = u.id
+      WHERE a.group_id = ?
+      ORDER BY a.created_at DESC
+    `);
+
+    return stmt.all(groupId) as AnnouncementWithTeacher[];
+  }
+
+  async markAnnouncementAsRead(announcementId: string, studentId: string): Promise<void> {
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO announcement_reads (id, announcement_id, student_id, read_at)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    stmt.run(randomUUID(), announcementId, studentId, new Date().toISOString());
   }
 }
 
