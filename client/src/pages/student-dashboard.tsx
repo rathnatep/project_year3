@@ -45,6 +45,11 @@ export default function StudentDashboard() {
     enabled: !!token,
   });
 
+  const { data: upcomingTasks, isLoading: tasksLoading } = useQuery<TaskWithSubmissionStatus[]>({
+    queryKey: ["/api/tasks/upcoming"],
+    enabled: !!token,
+  });
+
   const joinGroupMutation = useMutation({
     mutationFn: async (code: string) => {
       return await apiRequest("POST", "/api/groups/join", { joinCode: code });
@@ -121,8 +126,6 @@ export default function StudentDashboard() {
           <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name?.split(" ")[0]}</h1>
           <p className="text-muted-foreground">View your upcoming tasks and assignments</p>
         </div>
-
-        {upcomingTasks && <DeadlineReminder tasks={upcomingTasks} />}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-gradient-to-br from-card to-background border-overdue/20 hover-elevate">
